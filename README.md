@@ -27,10 +27,11 @@ credit-data-dl/
 │   │   │   └── fre/          ← FRE formulário de referência
 │   │   ├── anbima/
 │   │   │   └── {TICKER}/
-│   │   │       ├── caracteristicas.json
-│   │   │       ├── agenda.json
-│   │   │       ├── pu_historico.json
-│   │   │       └── fluxo.json
+│   │   │       ├── caracteristicas.json   ← dados cadastrais da emissão
+│   │   │       ├── agenda.json            ← fluxo de eventos (paginado completo)
+│   │   │       ├── pu_historico.json      ← série de PU par + VNA (paginada completa)
+│   │   │       ├── grafico_pu.json        ← série de PU par + indicativo (desde emissão)
+│   │   │       └── precos.json            ← taxas, duration, spread (dias recentes)
 │   │   └── manual_uploads/   ← PDFs de fechadas, ratings, escrituras
 │   ├── 02_silver/            ← JSONs padronizados (próxima fase)
 │   └── 03_gold/              ← Supabase PostgreSQL (próxima fase)
@@ -71,9 +72,17 @@ python scripts/02_download_cvm.py --tipo itr --anos 2023 2024
 python scripts/02_download_cvm.py --tipo fre --anos 2022 2023 2024
 ```
 
-#### 4. Download ANBIMA
+#### 4. Download ANBIMA (scraping via Playwright)
 ```bash
+pip install playwright
+playwright install chromium
 python scripts/03_download_anbima.py
+```
+
+#### 5. Parser ANBIMA → Supabase
+```bash
+python scripts/04b_parser_anbima.py --dry-run   # testa sem salvar
+python scripts/04b_parser_anbima.py             # popula operacoes, agenda, pu_historico
 ```
 
 ### Atualização trimestral
