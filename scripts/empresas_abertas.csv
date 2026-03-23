@@ -1,0 +1,10 @@
+nome,cnpj,cod_cvm,ticker_acao,categoria,observacao
+Alares Internet Participacoes SA,23438929000100,25194,,A,Sem acao listada
+CASAN - Cia Catarinense de Aguas e Saneamento,82508433000117,16861,,A,Buscar cod_cvm pelo nome
+EcoRodovias Concessoes e Servicos SA,08873873000110,21903,ECOR3,A,Buscar cod_cvm pelo nome
+Enauta Participacoes SA,11669021000110,22365,ENAT3,A,Buscar cod_cvm pelo nome
+Igua Saneamento SA,08159965000133,23175,,A,Sem acao listada
+Arteris SA,02919555000167,19771,,-B,Cat B sem acao listada
+Equipav Saneamento SA,15385166000140,27642,,B,Registro CVM 2024 buscar cod_cvm
+Aegea Saneamento e Participacoes SA,08827501000158,23396,,,B
+CORSAN - Cia Riograndense de Saneamento,92802784000190,16748,CSAB3,A,Verificar status pos-privatizacao
