@@ -82,9 +82,21 @@ def main():
         
         for arq in arquivos:
             arq_origem = origem / arq
+            arq_destino = destino / arq
             if arq_origem.exists():
-                shutil.copy2(arq_origem, destino / arq)
-                copiados.append(arq)
+                import os
+                # [INCREMENTAL] Só copia se for diferente (mtime ou size)
+                pula = False
+                if arq_destino.exists():
+                    stats_o = arq_origem.stat()
+                    stats_d = arq_destino.stat()
+                    # Diferença de até 1s na mtime é ignorada (FAT32/zip issues)
+                    if abs(stats_o.st_mtime - stats_d.st_mtime) < 1.0 and stats_o.st_size == stats_d.st_size:
+                        pula = True
+                
+                if not pula:
+                    shutil.copy2(arq_origem, arq_destino)
+                    copiados.append(arq)
         
         print(f"  {ticker:<10} → {cnpj}  ({len(copiados)} arquivos)")
         cont_sucesso += 1

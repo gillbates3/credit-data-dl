@@ -1,39 +1,41 @@
 """
-03_download_anbima.py
+01_download_anbima.py (Async + Deep Layer)
 
 Baixa dados completos de debêntures através de Web Scraping Dinâmico na plataforma ANBIMA.
-Intercepta as respostas do Backend-For-Frontend (BFF) usando Playwright.
-
-Extrai:
- - caracteristicas.json
- - agenda.json
- - historico_diario.json
+Suporta:
+ - Camada Light: Cadastro, Agenda, Histórico PU (Gráfico) e Taxas (últimos 5 dias).
+ - Camada Deep: Preenchimento de taxas históricas faltantes via Calculadora (UI Interativa).
 """
 
 import json
-import traceback
-import sys
+import asyncio
 import csv
+import sys
+import os
+import time
+import re
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from datetime import datetime
+from playwright.async_api import async_playwright
 
 # ── Configuração ─────────────────────────────────────────────────────────────
 
 SCRIPT_DIR = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING_ANBIMA = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
+MAX_CONCURRENT_TICKERS = 3 # Reduzido para evitar bloqueios de IP na calculadora
+TICKERS = [] # Variável global que pode ser sobreposta por scripts de teste
 
 def carregar_tickers() -> list[str]:
     csv_path = PROJETO_RAIZ / "emissoes.csv"
     tickers = []
+    if not csv_path.exists(): return []
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row["ticker"]:
+            if row.get("ticker"):
                 tickers.append(row["ticker"].strip())
     return tickers
-
-TICKERS = carregar_tickers()
 
 def salvar_json(dados: dict | list, caminho: Path):
     caminho.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +43,6 @@ def salvar_json(dados: dict | list, caminho: Path):
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
 def resolver_nome_arquivo(url_name: str, ticker: str) -> str:
-    """Mapeia o endpoint do BFF para o nome esperado pelo parser."""
     if url_name == ticker or url_name == "caracteristicas":
         return "caracteristicas.json"
     elif url_name == "agenda":
@@ -51,6 +52,8 @@ def resolver_nome_arquivo(url_name: str, ticker: str) -> str:
     elif url_name == "grafico-pu-historico-indicativo":
         return "grafico_pu.json"
     return f"{url_name}.json"
+
+# ── Helpers de Conversão ─────────────────────────────────────────────────────
 
 def f(v) -> float | None:
     if v is None or v == "": return None
@@ -66,7 +69,9 @@ def data_curta(v) -> str | None:
     if not v: return None
     return str(v)[:10]
 
-def consolidar_historico(ticker: str, grafico: dict, curva: dict, precos: dict) -> list[dict]:
+# ── Lógica de Consolidação de Histórico ─────────────────────────────────────
+
+def consolidar_historico_light(ticker: str, grafico: dict, curva: dict, precos: dict) -> list[dict]:
     por_data = {}
     def base(data: str):
         return {
@@ -137,117 +142,304 @@ def consolidar_historico(ticker: str, grafico: dict, curva: dict, precos: dict) 
 
     return list(por_data.values())
 
-def extrair_ticker(page, ticker: str, destino: Path) -> list[str]:
-    """Navega pelo site interceptando as chaves JSON."""
+# ── Extrator Principal ───────────────────────────────────────────────────────
+
+async def extrair_ticker_light(page, ticker: str, destino: Path) -> list[str]:
+    carac_path = destino / "caracteristicas.json"
+    agenda_path = destino / "agenda.json"
+    hist_path = destino / "historico_diario.json"
+    
+    precisa_carac = not carac_path.exists()
+    
+    precisa_agenda = True
+    if agenda_path.exists():
+        if (time.time() - os.path.getmtime(agenda_path)) < 86400: # 24h
+            precisa_agenda = False
+            
+    precisa_hist = True
+    if hist_path.exists():
+        try:
+            with open(hist_path, encoding="utf-8") as f_in:
+                existente = json.load(f_in)
+                if existente:
+                    datas = [r["data_referencia"] for r in existente if r.get("data_referencia")]
+                    if datas:
+                        ultima = max(datas)
+                        hoje = datetime.now().strftime("%Y-%m-%d")
+                        ontem = (datetime.now().fromtimestamp(time.time() - 86400)).strftime("%Y-%m-%d")
+                        if ultima >= hoje or ultima >= ontem:
+                            # Se temos dado recente de PU, talvez não precisemos do gráfico pesado
+                            precisa_hist = False
+        except: pass
+
+    if not precisa_carac and not precisa_agenda and not precisa_hist:
+        return ["SKIP"]
+
     encontrados = set()
     dados_capturados = {}
     
-    def handle_response(response):
+    async def handle_response(response):
         if "web-bff" in response.url and ticker in response.url and response.request.method == "GET":
             try:
-                data = response.json()
+                data = await response.json()
                 if not data or ("msg" in data and "token" in str(data.get("msg", "")).lower()):
-                    return # Ignora timeouts de token
-                
-                # Extrair o nome do endpoint
+                    return
                 url_name = response.url.split("/")[-1].split("?")[0]
                 arquivo_nome = resolver_nome_arquivo(url_name, ticker)
-                
                 if arquivo_nome not in encontrados:
                     dados_capturados[arquivo_nome] = data
                     encontrados.add(arquivo_nome)
-            except Exception:
-                pass
+            except: pass
 
-    def handle_route(route):
-        import re
+    # Interceptador para estender o período do gráfico
+    async def handle_route(route):
         url = route.request.url
         new_url = re.sub(r"periodo=\d+", "periodo=0", url)
-        route.continue_(url=new_url)
+        await route.continue_(url=new_url)
 
-    page.route("**/grafico-pu-historico-indicativo*", handle_route)
+    await page.route("**/grafico-pu-historico-indicativo*", handle_route)
     page.on("response", handle_response)
     
-    abas = [
-        "caracteristicas",
-        "agenda",
-        "precos"
-    ]
+    abas = []
+    if precisa_carac: abas.append("caracteristicas")
+    if precisa_agenda: abas.append("agenda")
+    if precisa_hist: abas.append("precos")
     
     for aba in abas:
-        sys.stdout.write(f".")
-        sys.stdout.flush()
         try:
-            # Aumentado o timeout para compensar o carregamento completo do SPA da Anbima
-            page.goto(f"https://data.anbima.com.br/debentures/{ticker}/{aba}", wait_until="networkidle", timeout=30000)
-            page.wait_for_timeout(2000)
-        except Exception:
-            # Ignora timeouts em abas vazias pra continuar a raspagem
-            pass
+            await page.goto(f"https://data.anbima.com.br/debentures/{ticker}/{aba}", wait_until="networkidle", timeout=45000)
+            await asyncio.sleep(2)
+        except Exception: pass
             
     page.remove_listener("response", handle_response)
     
-    # Consolidação e salvamento único
     arquivos_finais = []
     if "caracteristicas.json" in dados_capturados:
-        salvar_json(dados_capturados["caracteristicas.json"], destino / "caracteristicas.json")
+        salvar_json(dados_capturados["caracteristicas.json"], carac_path)
         arquivos_finais.append("caracteristicas.json")
+        
     if "agenda.json" in dados_capturados:
-        salvar_json(dados_capturados["agenda.json"], destino / "agenda.json")
+        salvar_json(dados_capturados["agenda.json"], agenda_path)
         arquivos_finais.append("agenda.json")
         
-    historico = consolidar_historico(
-        ticker,
-        dados_capturados.get("grafico_pu.json"),
-        dados_capturados.get("pu_historico.json"),
-        dados_capturados.get("precos.json")
-    )
-    if historico:
-        salvar_json(historico, destino / "historico_diario.json")
-        arquivos_finais.append("historico_diario.json")
+    if precisa_hist or "precos.json" in dados_capturados:
+        novo_hist = consolidar_historico_light(
+            ticker,
+            dados_capturados.get("grafico_pu.json"),
+            dados_capturados.get("pu_historico.json"),
+            dados_capturados.get("precos.json")
+        )
+        if novo_hist:
+            if hist_path.exists():
+                try:
+                    with open(hist_path, encoding="utf-8") as f_in:
+                        antigo = json.load(f_in)
+                        mapa = {r["data_referencia"]: r for r in antigo}
+                        for r in novo_hist:
+                            # Se já existe no histórico antigo, preserva a taxa indicativa que a Camada Deep suou para pegar
+                            if r["data_referencia"] in mapa:
+                                old_taxa = mapa[r["data_referencia"]].get("taxa_indicativa")
+                                if old_taxa is not None and r.get("taxa_indicativa") is None:
+                                    r["taxa_indicativa"] = old_taxa
+                            mapa[r["data_referencia"]] = r
+                        novo_hist = sorted(mapa.values(), key=lambda x: x["data_referencia"])
+                except: pass
+            salvar_json(novo_hist, hist_path)
+            arquivos_finais.append("historico_diario.json")
         
     return arquivos_finais
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Camada Deep (Calculadora) ────────────────────────────────────────────────
 
-def main():
+async def extrair_taxas_faltantes_calculadora(page, ticker: str, destino: Path):
+    hist_path = destino / "historico_diario.json"
+    if not hist_path.exists(): return
+    
+    with open(hist_path, "r", encoding="utf-8") as f:
+        historico_diario = json.load(f)
+
+    # Identificar datas sem taxa (excluindo fins de semana/feriados onde PU Par é null talvez? 
+    # Melhor pegar tudo que tem PU indicativo mas não tem taxa)
+    datas_para_raspar = [
+        r["data_referencia"] for r in historico_diario 
+        if r.get("taxa_indicativa") is None and r.get("pu_indicativo") is not None
+    ]
+    
+    if not datas_para_raspar:
+        return
+
+    print(f" -> [{ticker}] {len(datas_para_raspar)} taxas faltantes...")
+    url_calc = f"https://data.anbima.com.br/ferramentas/calculadora/debentures/{ticker}?ativo=debentures"
+    
+    resultados_taxas = {}
+    
+    async def handle_response(response):
+        if "web-bff" in response.url and "taxas" in response.url:
+            try:
+                data = await response.json()
+                # Extrair ref_date da URL: ...data_referencia=2024-03-24
+                match = re.search(r"data_referencia=(\d{4}-\d{2}-\d{2})", response.url)
+                if match:
+                    ref_date = match.group(1)
+                    if "taxa_anbima" in data:
+                        resultados_taxas[ref_date] = data["taxa_anbima"]
+            except: pass
+
+    page.on("response", handle_response)
+    
+    try:
+        await page.goto(url_calc, wait_until="domcontentloaded", timeout=40000)
+        await asyncio.sleep(5)
+    except: pass
+
+    # Seletor do input de data (Ajustado para maior robustez)
+    date_input_selector = "xpath=//div[contains(text(), 'Data da operação')]/..//input | //label[contains(text(), 'Data da operação')]/..//input"
+    loader_selector = "._container_188l7_1" # Seletor do spinner de carregamento observado
+
+    try:
+        # Espera o loader sumir se ele aparecer
+        if await page.is_visible(loader_selector):
+            await page.wait_for_selector(loader_selector, state="hidden", timeout=20000)
+        
+        # Garante que o input está visível antes de começar
+        await page.wait_for_selector(date_input_selector, timeout=15000)
+    except:
+        # Segundo fallback com seletor de classe parcial
+        date_input_selector = "input[class*='_input_']"
+        try: 
+            await page.wait_for_selector(date_input_selector, timeout=5000)
+        except: 
+            print(f" -> [{ticker}] ERRO: Não encontrou seletor de data na calculadora.")
+            return
+
+    # Iterar nas datas faltantes (do mais recente para o mais antigo)
+    datas_para_raspar.sort(reverse=True)
+    
+    # Remover limite para permitir a varredura até 100% histórico do ticker
+    lote = datas_para_raspar
+    total_faltantes = len(lote)
+    
+    falhas_consecutivas = 0
+    salvamentos_pendentes = 0
+    vagas_preenchidas = 0
+    
+    for idx, dt_str in enumerate(lote):
+        try:
+            dt_obj = datetime.strptime(dt_str, "%Y-%m-%d")
+            dt_str_input = dt_obj.strftime("%d%m%Y")
+            
+            input_el = page.locator(date_input_selector).first
+            await input_el.click()
+            await page.keyboard.press("Control+A")
+            await page.keyboard.press("Backspace")
+            await page.keyboard.type(dt_str_input)
+            await page.keyboard.press("Enter")
+            
+            # Pequeno delay para o BFF responder
+            await asyncio.sleep(1.2)
+            
+            taxa_val = resultados_taxas.get(dt_str, 'N/A')
+            print(f"[{ticker}] Progresso: {idx + 1}/{total_faltantes} | Data: {dt_str} | Taxa: {taxa_val}")
+            
+            if taxa_val == 'N/A':
+                falhas_consecutivas += 1
+            else:
+                falhas_consecutivas = 0
+                vagas_preenchidas += 1
+                
+                # Injetar no historico em memoria
+                for r in historico_diario:
+                    if r["data_referencia"] == dt_str:
+                        if isinstance(taxa_val, str):
+                            taxa_val = float(taxa_val.replace(",", "."))
+                        r["taxa_indicativa"] = taxa_val
+                        break
+                        
+                salvamentos_pendentes += 1
+                
+            # Checkpoint automático a cada 50 taxas injetadas
+            if salvamentos_pendentes >= 50:
+                salvar_json(historico_diario, hist_path)
+                print(f"[*] [{ticker}] Checkpoint: 50 novas taxas salvas com sucesso.")
+                salvamentos_pendentes = 0
+                
+            if falhas_consecutivas >= 10:
+                print(f"[!] [{ticker}] Circuit breaker acionado: 10 falhas seguidas na data. Interrompendo ticker.")
+                break
+                
+        except Exception as e:
+            print(f"[{ticker}] Progresso: {idx + 1}/{total_faltantes} | Data: {dt_str} | Erro: {e}")
+
+    page.remove_listener("response", handle_response)
+    
+    # Salvar o residual do checkpoint
+    if salvamentos_pendentes > 0:
+        salvar_json(historico_diario, hist_path)
+        
+    if vagas_preenchidas > 0:
+        print(f" -> [{ticker}] OK: Resumo -> {vagas_preenchidas} taxas processadas e injetadas no total.")
+
+# ── Executor de Concorrência ─────────────────────────────────────────────────
+
+async def processar_ticker(browser, ticker: str, semaphore: asyncio.Semaphore):
+    async with semaphore:
+        destino = LANDING_ANBIMA / ticker
+        context = await browser.new_context(viewport={"width": 1280, "height": 800})
+        page = await context.new_page()
+        
+        # Otimização de carga (bloquear mídia)
+        await page.route("**/*.{png,jpg,jpeg,webp,svg,gif}", lambda route: route.abort())
+        
+        try:
+            # 1. Camada Light
+            print(f"[*] {ticker} Iniciando Camada Light...")
+            arquivos = await extrair_ticker_light(page, ticker, destino)
+            
+            if arquivos == ["SKIP"]:
+                print(f"[#] {ticker} Light: Atualizado.")
+            elif arquivos:
+                print(f"[+] {ticker} Light: OK ({', '.join(arquivos)})")
+            
+            # 2. Camada Deep (Calculadora)
+            # Sempre tentamos preencher se houver lacunas
+            await extrair_taxas_faltantes_calculadora(page, ticker, destino)
+            
+        except Exception as e:
+            print(f"[!] {ticker} FALHA: {str(e)[:100]}")
+        finally:
+            await context.close()
+
+async def main():
     print("\n" + "=" * 60)
-    print("  BOCAINA CAPITAL — Download ANBIMA (BFF Web Scraping)")
+    print("  BOCAINA CAPITAL — Download ANBIMA (Async Deep Scraper)")
     print("=" * 60)
 
-    sucessos = 0
-    erros = 0
-
-    with sync_playwright() as p:
-        print("\nIniciando navegador Chromium...")
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={"width": 1280, "height": 800})
-        page = context.new_page()
+    global TICKERS
+    args = sys.argv[1:]
+    
+    if args:
+        tickers = [t.upper() for t in args]
+    else:
+        tickers = TICKERS if TICKERS else carregar_tickers()
         
-        # O interceptador de imagens foi mantido, mas remover as fontes e CSS foi letal para o React.
-        page.route("**/*.{png,jpg,jpeg,webp,svg,gif}", lambda route: route.abort())
+    if not tickers:
+        print("Nenhum ticker fornecido ou encontrado em emissoes.csv")
+        return
 
-        for idx, ticker in enumerate(TICKERS, 1):
-            print(f"[{idx:02d}/{len(TICKERS)}] {ticker} ", end="")
-            destino = LANDING_ANBIMA / ticker
-            
-            try:
-                arquivos = extrair_ticker(page, ticker, destino)
-                if arquivos:
-                    print(f" OK ({', '.join(arquivos)})")
-                    sucessos += 1
-                else:
-                    print(" NENHUM DADO")
-                    erros += 1
-            except Exception as e:
-                print(f" ERRO: {str(e)[:50]}")
-                erros += 1
+    print(f"Processando {len(tickers)} tickers com concorrência {MAX_CONCURRENT_TICKERS}...")
 
-        browser.close()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_TICKERS)
+        
+        tasks = [processar_ticker(browser, ticker, semaphore) for ticker in tickers]
+        await asyncio.gather(*tasks)
+        
+        await browser.close()
 
     print("\n" + "-" * 60)
-    print(f"Downloads concluídos: {sucessos} com dados, {erros} vazios/com erro.")
-    print("Próximo passo: Rodar o script `02_descobrir_emissores.py`")
+    print("Scraping concluído.")
+    print("Próximo passo: Rodar o script `06_parser_silver_anbima.py` para consolidar na Silver.")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

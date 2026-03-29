@@ -32,6 +32,22 @@ EMISSOES_CSV = PROJETO_RAIZ / "emissoes.csv"
 ENV_FILE     = PROJETO_RAIZ / ".env"
 
 BATCH_SIZE = 500
+LAST_UPSERT_PATH = PROJETO_RAIZ / "data" / ".last_upsert.json"
+
+# ── Tracking ──────────────────────────────────────────────────────────────────
+
+def carregar_tracker():
+    if LAST_UPSERT_PATH.exists():
+        try:
+            with open(LAST_UPSERT_PATH) as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def salvar_tracker(tracker):
+    with open(LAST_UPSERT_PATH, "w") as f:
+        json.dump(tracker, f, indent=2)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -307,12 +323,16 @@ def upsert_anbima_ticker(supabase, cnpj: str, ticker: str, dry_run: bool) -> dic
 
 def main():
     parser = argparse.ArgumentParser(description="Upsert Silver Dossier → Supabase")
-    parser.add_argument("--cnpj", help="Processar só este CNPJ")
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force", action="store_true", help="Força upsert mesmo que não tenha mudado")
+    parser.add_argument("--dry-run", action="store_true", help="Simula o upsert sem escrever no banco")
+    parser.add_argument("--cnpj", type=str, help="Filtra a execução para um CNPJ específico")
     args = parser.parse_args()
 
     carregar_env()
     supabase = None if args.dry_run else conectar_supabase()
+    
+    tracker = carregar_tracker()
+    mudou_tracker = False
 
     print("\n" + "=" * 60)
     print(f"  credit-data-dl — Upsert Supabase {'[DRY-RUN]' if args.dry_run else ''}")
@@ -336,15 +356,39 @@ def main():
         print(f"  {cnpj} | {nome}")
         
         # Financeiro
-        n_fin = upsert_financeiro(supabase, cnpj, args.dry_run)
-        if n_fin: print(f"    Financeiro: {n_fin} linhas")
+        path_fin = SILVER / cnpj / f"{cnpj}.json"
+        mtime_fin = str(os.path.getmtime(path_fin)) if path_fin.exists() else None
+        
+        if args.force or tracker.get(f"fin_{cnpj}") != mtime_fin:
+            n_fin = upsert_financeiro(supabase, cnpj, args.dry_run)
+            if n_fin: 
+                print(f"    Financeiro: {n_fin} linhas")
+                tracker[f"fin_{cnpj}"] = mtime_fin
+                mudou_tracker = True
+            elif not path_fin.exists():
+                print(f"    Financeiro: (arquivo não encontrado)")
+        else:
+            print(f"    Financeiro: [SKIP]")
         
         # ANBIMA Tickers
         tickers = mapa_tickers.get(cnpj, [])
         for t in tickers:
-            stats = upsert_anbima_ticker(supabase, cnpj, t, args.dry_run)
-            if any(stats.values()):
-                print(f"    Ticker {t:<7}: op:{stats['op']} agenda:{stats['agenda']} hist:{stats['hist']}")
+            pasta_t = SILVER / cnpj / "anbima" / t
+            # Usamos o arquivo de historico como sensor de mudança por ser o mais frequente
+            path_h = pasta_t / "historico_diario.json"
+            mtime_h = str(os.path.getmtime(path_h)) if path_h.exists() else "Missing"
+            
+            if args.force or tracker.get(f"anbima_{t}") != mtime_h:
+                stats = upsert_anbima_ticker(supabase, cnpj, t, args.dry_run)
+                if any(stats.values()):
+                    print(f"    Ticker {t:<7}: op:{stats['op']} agenda:{stats['agenda']} hist:{stats['hist']}")
+                    tracker[f"anbima_{t}"] = mtime_h
+                    mudou_tracker = True
+            else:
+                 print(f"    Ticker {t:<7}: [SKIP]")
+
+    if mudou_tracker and not args.dry_run:
+        salvar_tracker(tracker)
 
     print(f"\n{'='*60}\n  Concluído!\n{'='*60}\n")
 

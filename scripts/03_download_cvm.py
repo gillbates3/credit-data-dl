@@ -117,14 +117,23 @@ def filtrar_e_salvar_csv(
     destino_dir.mkdir(parents=True, exist_ok=True)
     arquivo_saida = destino_dir / f"{tabela}_con.csv"
 
-    if arquivo_saida.exists():
-        return -1  # ja processado
-
     def normaliza_cod(cod: str) -> str:
-        s = cod.strip()
+        s = str(cod).strip()
         return str(int(s)) if s.isdigit() else s
 
     cod_cvms_norm = {normaliza_cod(c) for c in cod_cvms}
+
+    if arquivo_saida.exists():
+        # Check if all cod_cvms are present in the existing file
+        try:
+            with open(arquivo_saida, encoding="utf-8") as f_ex:
+                existentes = {normaliza_cod(l.get("CD_CVM", "")) for l in csv.DictReader(f_ex)}
+                if cod_cvms_norm.issubset(existentes):
+                    return -1  # Todos já estão lá
+                else:
+                    print(f"      Atualizando {tabela}_con.csv (novas empresas detectadas)")
+        except:
+             pass
 
     try:
         with zipfile.ZipFile(zip_path) as zf:

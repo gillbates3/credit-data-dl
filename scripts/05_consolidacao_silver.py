@@ -258,11 +258,14 @@ def main():
         help="Processar só esta empresa (CNPJ, apenas dígitos)",
     )
     parser.add_argument(
-        "--dry-run",
+        "--force",
         action="store_true",
-        help="Mostra o que seria processado sem salvar arquivos",
+        help="Força reprocessamento mesmo que o arquivo já exista e esteja atualizado",
     )
     args = parser.parse_args()
+
+    import os
+    import time
 
     SILVER.mkdir(parents=True, exist_ok=True)
 
@@ -316,8 +319,28 @@ def main():
             print("→ PULANDO")
             continue
 
+        saida = SILVER / cnpj / f"{cnpj}.json"
+        
+        # ── [INCREMENTAL] Check ──────────────────────────────────────────────
+        if not args.force and saida.exists() and not args.dry_run:
+            mtime_saida = os.path.getmtime(saida)
+            
+            # Coleta mtime de todos os CSVs que afetam esta empresa
+            mtimes_origem = []
+            for chave, csvs in csvs_por_chave.items():
+                for c_path in csvs:
+                    mtimes_origem.append(os.path.getmtime(c_path))
+            
+            # Mtime do manual
+            manual_path = MANUAL_UPLOADS / cnpj / f"{cnpj}.json"
+            if manual_path.exists():
+                mtimes_origem.append(os.path.getmtime(manual_path))
+            
+            if mtimes_origem and mtime_saida > max(mtimes_origem):
+                print(f"→ ATUALIZADO (pulando)")
+                continue
+
         if not args.dry_run:
-            saida = SILVER / cnpj / f"{cnpj}.json"
             saida.parent.mkdir(parents=True, exist_ok=True)
             with open(saida, "w", encoding="utf-8") as f:
                 json.dump(json_empresa, f, ensure_ascii=False, indent=2)

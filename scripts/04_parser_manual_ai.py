@@ -69,56 +69,27 @@ MIN_TEXT_CHARS_PER_PAGE = 100
 MAX_TEXT_PAGES_PER_PDF = 30
 
 # ─── System Prompt ────────────────────────────────────────────────────────────
-SYSTEM_INSTRUCTION = """
+def SYSTEM_INSTRUCTION_GEN(existing_json_str: str) -> str:
+    return f"""
 Você é um analista financeiro sênior especializado em estruturar balanços de empresas brasileiras no padrão da CVM para análise de crédito de debêntures.
 
 Sua tarefa: ler o texto das demonstrações financeiras fornecido e extrair os dados em JSON.
 
-REGRAS CRÍTICAS:
-1. SEMPRE use a coluna "Consolidado" quando houver "Controladora" e "Consolidado".
-2. NUNCA recalcule valores. Copie EXATAMENTE o valor que aparece na linha totalizadora do PDF.
-3. Normalize UNIDADES: se o PDF diz "(Em milhares de reais)", multiplique todos os valores por 1.000.
-   Exemplo: se a tabela mostra "24.102", o valor JSON deve ser 24102000.0
-4. DFC - MAPEAMENTO CVM:
-   - 6.01: "Caixa líquido (aplicado nas) proveniente das atividades operacionais". É o TOTAL FINAL da seção operacional.
-   - 6.02: "Caixa líquido (aplicado nas) proveniente das atividades de investimento".
-   - 6.03: "Caixa líquido (aplicado nas) proveniente das atividades de financiamento".
-5. ATENÇÃO COLUNAS: Certifique-se de extrair o valor da coluna correspondente ao período mais recente (geralmente a primeira coluna de valores após a descrição). Ignore saldos comparativos de anos anteriores que aparecem na mesma tabela.
-6. Período: use a data de encerramento no formato "YYYY-MM-DD" e "tipo" (DFP para anual, ITR para trimestral).
+[CONTEXTO]
+O arquivo JSON atual da empresa já contém os seguintes períodos: {existing_json_str}
+Se o PDF que você está lendo contiver esses mesmos períodos, foque em extrair apenas períodos NOVOS ou informações que faltam. Se os dados forem idênticos, você pode omiti-los do retorno para economizar tokens.
 
-ESTRUTURA JSON OBRIGATÓRIA (responda apenas o JSON, sem explicações):
-{
-  "periodos": {
-    "2024-12-31": {
-      "tipo": "DFP",
-      "demonstracoes": {
-        "BPA": {
-          "1":    { "cd_conta": "1",    "ds_conta": "Ativo Total",       "valor": 1000000.0, "ordem": 1 },
-          "1.01": { "cd_conta": "1.01", "ds_conta": "Ativo Circulante",  "valor": 500000.0,  "ordem": 2 }
-        },
-        "BPP": {
-          "2":    { "cd_conta": "2",    "ds_conta": "Passivo Total",     "valor": 1000000.0, "ordem": 1 }
-        },
-        "DRE": {
-          "3.01": { "cd_conta": "3.01", "ds_conta": "Receita Líquida",  "valor": 800000.0,  "ordem": 1 }
-        },
-        "DFC": {
-          "6.01": { "cd_conta": "6.01", "ds_conta": "Caixa Atividades Operacionais", "valor": 120000.0, "ordem": 1 },
-          "6.02": { "cd_conta": "6.02", "ds_conta": "Caixa Atividades Investimento", "valor": -50000.0, "ordem": 2 },
-          "6.03": { "cd_conta": "6.03", "ds_conta": "Caixa Atividades Financiamento","valor": -30000.0, "ordem": 3 }
-        }
-      }
-    }
-  }
-}
+REGRAS CRÍTICAS:
+...
 """
 
 # ─── Modelo Gemini ────────────────────────────────────────────────────────────
-def get_model():
+def get_model(existing_json: dict):
+    existing_periods = list(existing_json.get("periodos", {}).keys())
     return genai.GenerativeModel(
         model_name="gemini-2.5-flash",
-        system_instruction=SYSTEM_INSTRUCTION,
-        generation_config=genai.GenerationConfig(
+        system_instruction=SYSTEM_INSTRUCTION_GEN(str(existing_periods)),
+        generation_config=genai.GenerativeConfig(
             temperature=0.0,
             response_mime_type="application/json",
         )
@@ -248,19 +219,22 @@ def merge_periods(consolidated: dict, new_data: dict):
 
 # ─── Função principal de extração ─────────────────────────────────────────────
 
-def extract_from_pdfs(cnpj: str, pdf_paths: list[Path]) -> dict | None:
-    """
-    Pipeline híbrido:
-    1. Filtra PDFs não financeiros (por nome)
-    2. Extrai texto com pdfplumber (grátis)
-    3. Se tem texto → envia texto para IA (barato)
-    4. Se escaneado  → envia PDF para IA Vision (caro, fallback)
-    """
-    consolidated = {"periodos": {}}
-    model = get_model()
+def extract_from_pdfs(cnpj: str, pdf_paths: list[Path], consolidated: dict) -> dict | None:
+    """Pipeline híbrido incremental."""
+    model = get_model(consolidated)
     token_report = {"text_mode": 0, "vision_mode": 0, "skipped": 0}
+    
+    # Manifest de arquivos já processados
+    if "processed_files" not in consolidated:
+        consolidated["processed_files"] = []
+    
+    processed_set = {f["name"] for f in consolidated["processed_files"]}
 
     for path in pdf_paths:
+        if path.name in processed_set:
+            print(f"  ⏭  Pulado (já processado): {path.name}")
+            continue
+
         # ── Etapa 1: Filtrar por nome ─────────────────────────────────────────
         if not is_financial_pdf(path):
             print(f"  ⏭  Pulado (não financeiro): {path.name}")
@@ -298,6 +272,10 @@ def extract_from_pdfs(cnpj: str, pdf_paths: list[Path]) -> dict | None:
 
         if result:
             merge_periods(consolidated, result)
+            consolidated["processed_files"].append({
+                "name": path.name,
+                "timestamp": path.stat().st_mtime
+            })
             n_periodos = len(result.get("periodos", {}))
             print(f"    ✅ {n_periodos} período(s) extraído(s).")
         else:
@@ -305,12 +283,7 @@ def extract_from_pdfs(cnpj: str, pdf_paths: list[Path]) -> dict | None:
 
         time.sleep(1)  # rate limit protection
 
-    print(f"\n  📊 Resumo [{cnpj}]:")
-    print(f"     Modo Texto (barato): {token_report['text_mode']} arquivo(s)")
-    print(f"     Modo Vision (caro):  {token_report['vision_mode']} arquivo(s)")
-    print(f"     Pulados:             {token_report['skipped']} arquivo(s)")
-
-    return consolidated if consolidated["periodos"] else None
+    return consolidated
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -327,30 +300,31 @@ def main():
         cnpj = cnpj_dir.name
         print(f"\n{'='*55}\nProcessando CNPJ: {cnpj}\n{'='*55}")
 
-        json_saida = cnpj_dir / "dados_financeiros.json"
-
+        json_saida = cnpj_dir / f"{cnpj}.json"
+        
+        # Carrega existente se houver
+        consolidated = {"periodos": {}, "processed_files": []}
         if json_saida.exists():
-            print(f"  ⏭  dados_financeiros.json já existe. Pulando.")
-            print(f"     (Apague o arquivo para re-gerar.)")
-            continue
+            try:
+                with open(json_saida, encoding="utf-8") as f:
+                    consolidated = json.load(f)
+            except:
+                pass
 
         pdf_paths = sorted(cnpj_dir.glob("*.pdf"))
-
         if not pdf_paths:
             print(f"  ❌ Nenhum PDF encontrado.")
             continue
 
-        print(f"  {len(pdf_paths)} PDFs encontrados na pasta.")
+        dados = extract_from_pdfs(cnpj, pdf_paths, consolidated)
 
-        dados = extract_from_pdfs(cnpj, pdf_paths)
-
-        if dados:
+        if dados and dados.get("periodos"):
             with open(json_saida, "w", encoding="utf-8") as f:
                 json.dump(dados, f, indent=2, ensure_ascii=False)
             n = len(dados["periodos"])
-            print(f"\n  ✅ Sucesso: {json_saida.name} gerado com {n} período(s)!")
+            print(f"\n  ✅ {json_saida.name} atualizado com {n} período(s)!")
         else:
-            print(f"\n  ❌ Falha: nenhum dado financeiro encontrado nos PDFs.")
+            print(f"\n  ⏭  Sem novos dados para processar.")
 
 
 if __name__ == "__main__":

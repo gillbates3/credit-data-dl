@@ -22,6 +22,7 @@ EMPRESAS_CSV = PROJETO_RAIZ / "empresas.csv"
 EMISSOES_CSV = PROJETO_RAIZ / "emissoes.csv"
 LANDING_ANBIMA = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
 CVM_CAD_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
+CVM_CACHE_PATH = PROJETO_RAIZ / "tmp" / "cvm_cadastro.csv"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,12 +36,28 @@ def carregar_csv_empresas() -> list[dict]:
         return list(csv.DictReader(f))
 
 def baixar_cadastro_cvm() -> list[dict]:
-    """Baixa o cadastro completo de companhias abertas da CVM."""
-    print(f"Baixando cadastro CVM...")
+    """Baixa o cadastro completo de companhias abertas da CVM ou usa cache."""
+    import time
+    import os
+
+    if CVM_CACHE_PATH.exists():
+        # Menos de 24 horas?
+        if (time.time() - os.path.getmtime(CVM_CACHE_PATH)) < 86400:
+            print(f"Usando cache do cadastro CVM ({CVM_CACHE_PATH.name})")
+            with open(CVM_CACHE_PATH, encoding="latin-1") as f:
+                 return list(csv.DictReader(f, delimiter=";"))
+
+    print(f"Baixando cadastro CVM atualizado...")
     try:
         resp = requests.get(CVM_CAD_URL, timeout=60)
         resp.raise_for_status()
         resp.encoding = "latin-1"
+        
+        # Salva no cache
+        CVM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(CVM_CACHE_PATH, "w", encoding="latin-1", newline="") as f:
+            f.write(resp.text)
+            
         linhas = list(csv.DictReader(io.StringIO(resp.text), delimiter=";"))
         print(f"  {len(linhas)} companhias carregadas.\n")
         return linhas
