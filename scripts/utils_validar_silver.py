@@ -123,17 +123,26 @@ def main():
     )
     args = parser.parse_args()
 
-    jsons = sorted(SILVER.glob("*.json"))
+    # Busca todos os JSONs que têm o mesmo nome da pasta pai (o CNPJ)
+    jsons = []
+    for p in SILVER.iterdir():
+        if p.is_dir():
+            cnpj_json = p / f"{p.name}.json"
+            if cnpj_json.exists():
+                jsons.append(cnpj_json)
+    
+    jsons = sorted(jsons)
+
     if not jsons:
-        print(f"Nenhum JSON encontrado em {SILVER}")
-        print("Execute 04_parser_silver.py primeiro.")
+        print(f"Nenhum JSON de CNPJ encontrado em {SILVER}")
+        print("Execute scripts/05_consolidacao_silver.py primeiro.")
         return
 
     if args.cnpj:
         cnpj_limpo = "".join(c for c in args.cnpj if c.isdigit())
         jsons = [j for j in jsons if j.stem == cnpj_limpo]
         if not jsons:
-            print(f"JSON para CNPJ {args.cnpj} não encontrado.")
+            print(f"JSON para CNPJ {args.cnpj} não encontrado em {SILVER}/{cnpj_limpo}/")
             return
 
     print(f"\n{'='*60}")

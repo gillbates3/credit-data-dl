@@ -1,28 +1,17 @@
 """
-06_upsert_supabase.py
+08_upsert_supabase.py
 
-Lê os JSONs da camada Silver e o empresas_abertas.csv
-e popula as tabelas do Supabase:
+Lê o Dossiê do Emissor (Camada Silver) e popula o Supabase:
   - emissores
-  - demonstracoes_master
-  - operacoes (dados ANBIMA)
-
-Pré-requisitos:
-  pip install supabase python-dotenv
-
-Configuração:
-  Crie um arquivo .env na raiz do projeto com:
-    SUPABASE_URL=https://xxxx.supabase.co
-    SUPABASE_KEY=sua_service_role_key
-
-  A service_role key está em:
-  Supabase → Settings → API → service_role (não a anon key)
+  - demonstracoes_financeiras (Balanços)
+  - deb_caracteristicas      (ANBIMA Caracteristicas)
+  - deb_agenda               (ANBIMA Agenda)
+  - deb_historico_diario     (ANBIMA Preços)
 
 Uso:
-  python 06_upsert_supabase.py                    # tudo
-  python 06_upsert_supabase.py --cnpj 08827501000158  # só uma empresa
-  python 06_upsert_supabase.py --apenas emissores  # só a tabela de emissores
-  python 06_upsert_supabase.py --dry-run           # mostra sem salvar
+  python scripts/08_upsert_supabase.py
+  python scripts/08_upsert_supabase.py --cnpj 23438929000100
+  python scripts/08_upsert_supabase.py --dry-run
 """
 
 import argparse
@@ -38,89 +27,81 @@ from pathlib import Path
 SCRIPT_DIR   = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 SILVER       = PROJETO_RAIZ / "data" / "02_silver"
-ANBIMA_DIR   = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
-EMPRESAS_CSV = SCRIPT_DIR / "empresas.csv"
-EMISSOES_CSV = SCRIPT_DIR / "emissoes.csv"
+EMPRESAS_CSV = PROJETO_RAIZ / "empresas.csv"
+EMISSOES_CSV = PROJETO_RAIZ / "emissoes.csv"
 ENV_FILE     = PROJETO_RAIZ / ".env"
 
-# Tamanho do lote para insert em batch
 BATCH_SIZE = 500
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def carregar_env():
-    """Carrega variáveis do .env se existir."""
     if ENV_FILE.exists():
         with open(ENV_FILE) as f:
             for linha in f:
                 linha = linha.strip()
                 if linha and not linha.startswith("#") and "=" in linha:
-                    chave, valor = linha.split("=", 1)
-                    os.environ.setdefault(chave.strip(), valor.strip())
-
+                    k, v = linha.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip())
 
 def conectar_supabase():
-    """Retorna cliente Supabase autenticado."""
     try:
         from supabase import create_client
     except ImportError:
-        print("ERRO: supabase não instalado.")
-        print("Execute: pip install supabase python-dotenv")
+        print("ERRO: pip install supabase python-dotenv")
         sys.exit(1)
-
     url = os.environ.get("SUPABASE_URL", "").strip()
     key = os.environ.get("SUPABASE_KEY", "").strip()
-
     if not url or not key:
-        print("ERRO: SUPABASE_URL e SUPABASE_KEY não encontrados.")
-        print(f"Crie o arquivo {ENV_FILE} com:")
-        print("  SUPABASE_URL=https://xxxx.supabase.co")
-        print("  SUPABASE_KEY=sua_service_role_key")
+        print("ERRO: SUPABASE_URL e SUPABASE_KEY não encontrados no .env")
         sys.exit(1)
-
     return create_client(url, key)
 
-
 def normaliza_cnpj(cnpj: str) -> str:
-    return re.sub(r"\D", "", cnpj)
+    return re.sub(r"\D", "", cnpj or "")
 
+def f(v) -> float | None:
+    if v is None or v == "": return None
+    try: return float(str(v).replace(",", "."))
+    except: return None
 
-def carregar_empresas() -> list[dict]:
+def i(v) -> int | None:
+    if v is None or v == "": return None
+    try: return int(float(str(v)))
+    except: return None
+
+def batches(lst, n):
+    for idx in range(0, len(lst), n):
+        yield lst[idx:idx + n]
+
+# ── Carregamento de Dados ─────────────────────────────────────────────────────
+
+def carregar_cadastro_empresas() -> list[dict]:
+    if not EMPRESAS_CSV.exists(): return []
     with open(EMPRESAS_CSV, encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
+def carregar_mapa_emissoes() -> dict[str, list[str]]:
+    """Retorna { cnpj: [ticker1, ticker2] }."""
+    mapa = {}
+    if not EMISSOES_CSV.exists(): return mapa
+    with open(EMISSOES_CSV, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ticker = row.get("ticker", "").strip()
+            cnpj = normaliza_cnpj(row.get("cnpj_emissor", ""))
+            if ticker and cnpj:
+                mapa.setdefault(cnpj, []).append(ticker)
+    return mapa
 
-def carregar_json_silver(cnpj: str) -> dict | None:
-    path = SILVER / f"{cnpj}.json"
-    if not path.exists():
-        return None
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def carregar_anbima(ticker: str) -> dict | None:
-    path = ANBIMA_DIR / ticker / "caracteristicas.json"
-    if not path.exists():
-        return None
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def batches(lst: list, n: int):
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
-
-
-# ── Upsert emissores ──────────────────────────────────────────────────────────
+# ── Upserts ───────────────────────────────────────────────────────────────────
 
 def upsert_emissores(supabase, empresas: list[dict], dry_run: bool):
-    print("\n── Emissores ──")
+    print("\n── [1] Emissores ──")
     registros = []
     for e in empresas:
         cnpj = normaliza_cnpj(e.get("cnpj", ""))
-        if not cnpj:
-            print(f"  PULANDO {e.get('nome', '?')} — sem CNPJ")
-            continue
+        if not cnpj: continue
         registros.append({
             "cnpj":          cnpj,
             "cod_cvm":       e.get("cod_cvm", "").strip() or None,
@@ -129,197 +110,243 @@ def upsert_emissores(supabase, empresas: list[dict], dry_run: bool):
             "ticker_acao":   e.get("ticker_acao", "").strip() or None,
             "observacao":    e.get("observacao", "").strip() or None,
         })
+    
+    if not registros: return
+    print(f"  {len(registros)} registros")
+    if not dry_run:
+        supabase.table("emissores").upsert(registros, on_conflict="cnpj").execute()
 
-    print(f"  {len(registros)} emissores para upsert")
-    if dry_run:
-        for r in registros:
-            print(f"    {r['cnpj']}  {r['nome'][:50]}")
-        return
-
-    resp = supabase.table("emissores").upsert(
-        registros,
-        on_conflict="cnpj",
-    ).execute()
-    print(f"  OK — {len(registros)} registros inseridos/atualizados")
-
-
-# ── Upsert demonstracoes_master ───────────────────────────────────────────────
-
-def upsert_demonstracoes(supabase, cnpj: str, dados: dict, dry_run: bool) -> int:
-    """Converte JSON Silver → linhas da demonstracoes_master e faz upsert."""
+def upsert_financeiro(supabase, cnpj: str, dry_run: bool):
+    path = SILVER / cnpj / f"{cnpj}.json"
+    if not path.exists(): return 0
+    
+    with open(path, encoding="utf-8") as f_in:
+        dados = json.load(f_in)
+        
     registros = []
-
-    for periodo, periodo_dados in dados.get("periodos", {}).items():
-        tipo_doc = periodo_dados.get("tipo", "?")
-        for dem_nome, contas in periodo_dados.get("demonstracoes", {}).items():
-            for cd_conta, conta in contas.items():
+    for periodo, p_dados in dados.get("periodos", {}).items():
+        tipo_doc = p_dados.get("tipo", "?")
+        for dem, contas in p_dados.get("demonstracoes", {}).items():
+            for cd, c_dados in contas.items():
                 registros.append({
                     "cnpj":         cnpj,
                     "data_ref":     periodo,
                     "tipo_doc":     tipo_doc,
-                    "demonstracao": dem_nome,
-                    "cd_conta":     cd_conta,
-                    "ds_conta":     conta.get("ds_conta"),
-                    "valor":        conta.get("valor"),
+                    "demonstracao": dem,
+                    "cd_conta":     cd,
+                    "ds_conta":     c_dados.get("ds_conta"),
+                    "valor":        c_dados.get("valor"),
                 })
+                
+    if not registros: return 0
+    if not dry_run:
+        for lote in batches(registros, BATCH_SIZE):
+            supabase.table("demonstracoes_financeiras").upsert(
+                lote, on_conflict="cnpj,data_ref,tipo_doc,demonstracao,cd_conta"
+            ).execute()
+    return len(registros)
 
-    if not registros:
-        return 0
-
-    if dry_run:
-        print(f"    {len(registros)} linhas (dry-run)")
-        return len(registros)
-
-    total = 0
-    for lote in batches(registros, BATCH_SIZE):
-        supabase.table("demonstracoes_financeiras").upsert(
-            lote,
-            on_conflict="cnpj,data_ref,tipo_doc,demonstracao,cd_conta",
-        ).execute()
-        total += len(lote)
-
-    return total
-
-
-# ── Upsert operacoes (ANBIMA) ─────────────────────────────────────────────────
-
-def carregar_mapa_tickers() -> dict[str, str | None]:
-    """Carrega o mapa ticker -> CNPJ do emissor do emissoes.csv."""
-    mapa = {}
-    with open(EMISSOES_CSV, encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            t = row["ticker"].strip()
-            c = row.get("cnpj_emissor", "").strip() or None
-            mapa[t] = c
-    return mapa
-
-def upsert_operacoes(supabase, dry_run: bool):
-    print("\n── Operações (ANBIMA) ──")
-    registros = []
+def upsert_anbima_ticker(supabase, cnpj: str, ticker: str, dry_run: bool) -> dict:
+    pasta = SILVER / cnpj / "anbima" / ticker
+    res = {"op": 0, "agenda": 0, "hist": 0}
     
-    tickers_map = carregar_mapa_tickers()
+    # 1. Caracteristicas (Operações)
+    carac_path = pasta / "caracteristicas.json"
+    if carac_path.exists():
+        with open(carac_path, encoding="utf-8") as f_in:
+            c = json.load(f_in)
+            emissao = c.get("emissao") or {}
+            emissor = emissao.get("emissor") or {}
+            indexador_obj = c.get("indexador") or {}
+            
+            # Parsing de Remuneração (Indexador + Taxa Pré)
+            remun_str = c.get("remuneracao", "")
+            indexador_nome = indexador_obj.get("nome") if isinstance(indexador_obj, dict) else str(indexador_obj)
+            taxa_pre = None
+            
+            if not indexador_nome or indexador_nome == "None":
+                # Tenta extrair da string de remuneração: "IPCA + 5,5%" ou "100% do CDI"
+                match = re.search(r"(\w+)\s*\+\s*([\d\.,]+)%", remun_str)
+                if match:
+                    indexador_nome = match.group(1).strip().upper()
+                    taxa_pre = f(match.group(2))
+                else:
+                    match_cdi = re.search(r"([\d\.,]+)%\s*do\s*(\w+)", remun_str, re.IGNORECASE)
+                    if match_cdi:
+                        indexador_nome = match_cdi.group(2).strip().upper()
+                        taxa_pre = f(match_cdi.group(1))
 
-    for ticker, cnpj in tickers_map.items():
-        if not cnpj:
-            continue  # fechadas ainda sem CNPJ cadastrado
+            coord_lider = emissao.get("coordenador_lider") or {}
+            agf = emissao.get("agente_fiduciario") or {}
+            
+            # Cálculos Adicionais
+            vol_emissao = f(emissao.get("volume") or c.get("volume"))
+            qtd_emissao = i(emissao.get("quantidade_emitida"))
+            pu_emissao = None
+            if vol_emissao and qtd_emissao:
+                pu_emissao = vol_emissao / qtd_emissao
 
-        dados_anbima = carregar_anbima(ticker)
-        if not dados_anbima:
-            continue
+            # Prazo da emissão em anos
+            prazo_anos = None
+            d_emissao = emissao.get("data_emissao")
+            d_vencim = c.get("data_vencimento")
+            if d_emissao and d_vencim:
+                try:
+                    from datetime import datetime
+                    dt_e = datetime.strptime(d_emissao, "%Y-%m-%d")
+                    dt_v = datetime.strptime(d_vencim, "%Y-%m-%d")
+                    prazo_anos = round((dt_v - dt_e).days / 365.25, 2)
+                except:
+                    pass
 
-        # Extrai campos principais do payload ANBIMA
-        # A estrutura exata varia — guardamos o payload completo em dados_anbima
-        # e extraímos o que conseguirmos
-        registro = {
-            "cnpj":          normaliza_cnpj(cnpj),
-            "ticker_deb":    ticker,
-            "tipo":          "debenture",
-            "dados_anbima":  dados_anbima,
-        }
+            reg_op = {
+                "ticker_deb":              ticker,
+                "cnpj":                    cnpj,
+                "nome_emissor":            emissor.get("nome"),
+                "tipo":                    "debenture",
+                "isin":                    c.get("isin"),
+                "serie":                   c.get("numero_serie"),
+                "numero_emissao":          i(emissao.get("numero_emissao")),
+                "data_emissao":            d_emissao,
+                "data_vencimento":         d_vencim,
+                "data_primeiro_pagamento": None, # Pode ser extraído da agenda futuramente
+                "prazo_anos":              prazo_anos,
+                "volume_emissao":          vol_emissao,
+                "valor_unitario_emissao":  pu_emissao,
+                "quantidade_debentures":    qtd_emissao,
+                "indexador":               indexador_nome,
+                "taxa_prefixada":          taxa_pre or f(c.get("taxa_emissao")),
+                "especie":                 emissao.get("garantia"),
+                "lei_incentivo":           "Sim" if c.get("lei") else "Não",
+                "banco_coordenador":       coord_lider.get("nome") or coord_lider.get("razao_social"),
+                "agente_fiduciario":       agf.get("nome") or agf.get("razao_social"),
+                "banco_liquidante":        emissao.get("banco_mandatario"),
+                "status":                  "ativo",
+                "dados_anbima":            c,
+            }
 
-        # Tenta extrair campos estruturados do payload
-        if isinstance(dados_anbima, dict):
-            registro["data_emissao"]    = dados_anbima.get("dataEmissao") or dados_anbima.get("data_emissao")
-            registro["data_vencimento"] = dados_anbima.get("dataVencimento") or dados_anbima.get("data_vencimento")
-            registro["volume_emissao"]  = dados_anbima.get("valorEmissao") or dados_anbima.get("volume_emissao")
-            registro["indexador"]       = dados_anbima.get("indexador")
-            registro["rating_emissao"]  = dados_anbima.get("rating")
+            if not dry_run:
+                supabase.table("deb_caracteristicas").upsert(reg_op, on_conflict="ticker_deb").execute()
+            res["op"] = 1
 
-        registros.append(registro)
+    # 2. Agenda
+    agenda_path = pasta / "agenda.json"
+    if agenda_path.exists():
+        with open(agenda_path, encoding="utf-8") as f_in:
+            data = json.load(f_in)
+            eventos = data.get("content", []) if isinstance(data, dict) else data
+            regs = []
+            for ev in eventos:
+                if not ev.get("data_evento"): continue
+                regs.append({
+                    "ticker_deb":      ticker,
+                    "cnpj":            cnpj,
+                    "data_evento":     ev.get("data_evento"),
+                    "data_base":       ev.get("data_base"),
+                    "data_liquidacao": ev.get("data_liquidacao"),
+                    "evento":          ev.get("evento"),
+                    "evento_arc":      ev.get("evento_arc"),
+                    "taxa":            f(ev.get("taxa")),
+                    "valor":           f(ev.get("valor")),
+                    "status":          ev.get("status", {}).get("status") if isinstance(ev.get("status"), dict) else str(ev.get("status")),
+                    "grupo_status":    ev.get("status", {}).get("grupo_status") if isinstance(ev.get("status"), dict) else None
+                })
+            if regs and not dry_run:
+                for lote in batches(regs, BATCH_SIZE):
+                    supabase.table("deb_agenda").upsert(lote, on_conflict="ticker_deb,data_evento,evento").execute()
+            res["agenda"] = len(regs)
 
-    print(f"  {len(registros)} operações com dados ANBIMA disponíveis")
-
-    if not registros:
-        print("  Nenhum dado ANBIMA encontrado — execute 03_download_anbima.py primeiro")
-        return
-
-    if dry_run:
-        for r in registros:
-            print(f"    {r['ticker_deb']}  {r['cnpj']}")
-        return
-
-    for lote in batches(registros, BATCH_SIZE):
-        supabase.table("deb_caracteristicas").upsert(
-            lote,
-            on_conflict="ticker_deb",
-        ).execute()
-
-    print(f"  OK — {len(registros)} operações inseridas/atualizadas")
-
+    # 3. Histórico Diário
+    hist_path = pasta / "historico_diario.json"
+    if hist_path.exists():
+        with open(hist_path, encoding="utf-8") as f_in:
+            data = json.load(f_in)
+            regs_brutos = data if isinstance(data, list) else data.get("dados", [])
+            regs = []
+            for r in regs_brutos:
+                if not r.get("data_referencia"): continue
+                regs.append({
+                    "ticker_deb":              ticker,
+                    "data_referencia":         r.get("data_referencia"),
+                    "pu_par":                  f(r.get("pu_par")),
+                    "vna":                     f(r.get("vna")),
+                    "juros":                   f(r.get("juros")),
+                    "prazo_remanescente":      i(r.get("prazo_remanescente")),
+                    "pu_indicativo":           f(r.get("pu_indicativo")),
+                    "taxa_indicativa":         f(r.get("taxa_indicativa")),
+                    "taxa_compra":             f(r.get("taxa_compra")),
+                    "taxa_venda":              f(r.get("taxa_venda")),
+                    "duration_dias_uteis":     f(r.get("duration_dias_uteis")),
+                    "desvio_padrao":           f(r.get("desvio_padrao")),
+                    "percentual_pu_par":       f(r.get("percentual_pu_par")),
+                    "percentual_vne":          f(r.get("percentual_vne")),
+                    "intervalo_indicativo_min": f(r.get("intervalo_indicativo_min")),
+                    "intervalo_indicativo_max": f(r.get("intervalo_indicativo_max")),
+                    "referencia_ntnb":         r.get("referencia_ntnb"),
+                    "spread_indicativo":       f(r.get("spread_indicativo")),
+                    "volume_financeiro":       f(r.get("volume_financeiro")),
+                    "quantidade_negocios":     i(r.get("quantidade_negocios")),
+                    "quantidade_titulos":      i(r.get("quantidade_titulos")),
+                    "taxa_media_negocios":     f(r.get("taxa_media_negocios")),
+                    "pu_medio_negocios":       f(r.get("pu_medio_negocios")),
+                    "reune":                   r.get("reune"),
+                    "percentual_reune":        f(r.get("percentual_reune")),
+                    "pu_indicativo_status":    r.get("pu_indicativo_status"),
+                    "taxa_indicativa_status":  r.get("taxa_indicativa_status"),
+                    "flag_status":             r.get("flag_status"),
+                    "data_ultima_atualizacao": r.get("data_ultima_atualizacao"),
+                })
+            if regs and not dry_run:
+                for lote in batches(regs, BATCH_SIZE):
+                    supabase.table("deb_historico_diario").upsert(lote, on_conflict="ticker_deb,data_referencia").execute()
+            res["hist"] = len(regs)
+    
+    return res
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Upsert Silver → Supabase"
-    )
-    parser.add_argument("--cnpj", help="Processar só esta empresa")
-    parser.add_argument(
-        "--apenas",
-        choices=["emissores", "demonstracoes", "operacoes"],
-        help="Processar só esta tabela",
-    )
+    parser = argparse.ArgumentParser(description="Upsert Silver Dossier → Supabase")
+    parser.add_argument("--cnpj", help="Processar só este CNPJ")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     carregar_env()
+    supabase = None if args.dry_run else conectar_supabase()
 
     print("\n" + "=" * 60)
-    print("  credit-data-dl — Upsert Supabase")
+    print(f"  credit-data-dl — Upsert Supabase {'[DRY-RUN]' if args.dry_run else ''}")
     print("=" * 60)
 
-    if args.dry_run:
-        print("  MODO DRY-RUN — nenhum dado será salvo\n")
-        supabase = None
-    else:
-        supabase = conectar_supabase()
-        print("  Conexão Supabase: OK\n")
-
-    empresas = carregar_empresas()
+    # 1. Cadastro Base
+    empresas = carregar_cadastro_empresas()
     if args.cnpj:
-        cnpj_filtro = normaliza_cnpj(args.cnpj)
-        empresas = [e for e in empresas if normaliza_cnpj(e.get("cnpj","")) == cnpj_filtro]
+        target = normaliza_cnpj(args.cnpj)
+        empresas = [e for e in empresas if normaliza_cnpj(e.get("cnpj")) == target]
+    
+    upsert_emissores(supabase, empresas, args.dry_run)
 
-    # ── Emissores ──
-    if not args.apenas or args.apenas == "emissores":
-        upsert_emissores(supabase, empresas, args.dry_run)
+    # 2. Dossiês Silver
+    mapa_tickers = carregar_mapa_emissoes()
+    
+    print("\n── [2] Dossiês (Financeiro + ANBIMA) ──")
+    for e in empresas:
+        cnpj = normaliza_cnpj(e.get("cnpj"))
+        nome = e.get("nome", "?")[:40]
+        print(f"  {cnpj} | {nome}")
+        
+        # Financeiro
+        n_fin = upsert_financeiro(supabase, cnpj, args.dry_run)
+        if n_fin: print(f"    Financeiro: {n_fin} linhas")
+        
+        # ANBIMA Tickers
+        tickers = mapa_tickers.get(cnpj, [])
+        for t in tickers:
+            stats = upsert_anbima_ticker(supabase, cnpj, t, args.dry_run)
+            if any(stats.values()):
+                print(f"    Ticker {t:<7}: op:{stats['op']} agenda:{stats['agenda']} hist:{stats['hist']}")
 
-    # ── Demonstrações ──
-    if not args.apenas or args.apenas == "demonstracoes":
-        print("\n── Demonstrações financeiras ──")
-        total_linhas = 0
-        for empresa in empresas:
-            cnpj = normaliza_cnpj(empresa.get("cnpj", ""))
-            nome = empresa.get("nome", "?")[:50]
-            if not cnpj:
-                continue
-
-            dados = carregar_json_silver(cnpj)
-            if not dados:
-                print(f"  {nome}: sem JSON Silver — pulando")
-                continue
-
-            n_periodos = len(dados.get("periodos", {}))
-            print(f"  {nome}: {n_periodos} períodos", end="  ")
-
-            n = upsert_demonstracoes(supabase, cnpj, dados, args.dry_run)
-            total_linhas += n
-            if not args.dry_run:
-                print(f"→ {n} linhas")
-
-        print(f"\n  Total: {total_linhas} linhas inseridas/atualizadas")
-
-    # ── Operações ──
-    if not args.apenas or args.apenas == "operacoes":
-        upsert_operacoes(supabase, args.dry_run)
-
-    print("\n" + "=" * 60)
-    print("  Concluído!")
-    if not args.dry_run:
-        print("  Verifique no Supabase → Table Editor")
-    print("=" * 60 + "\n")
-
+    print(f"\n{'='*60}\n  Concluído!\n{'='*60}\n")
 
 if __name__ == "__main__":
     main()

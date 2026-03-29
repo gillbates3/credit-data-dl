@@ -36,7 +36,7 @@ import requests
 SCRIPT_DIR = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING = PROJETO_RAIZ / "data" / "01_landing" / "cvm_raw"
-EMPRESAS_CSV = SCRIPT_DIR / "empresas.csv"
+EMPRESAS_CSV = PROJETO_RAIZ / "empresas.csv"
 
 # Intervalo padrão de anos
 ANO_INICIO = 2018
@@ -339,7 +339,7 @@ def main():
 
     print("\n\nConcluído!")
     print(f"Dados salvos em: {LANDING}")
-    print("\nPróximo passo: python 03_download_anbima.py")
+    print("\nPróximo passo: python 04_parser_manual_ai.py")
 
 
 if __name__ == "__main__":

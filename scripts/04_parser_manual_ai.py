@@ -79,10 +79,12 @@ REGRAS CRÍTICAS:
 2. NUNCA recalcule valores. Copie EXATAMENTE o valor que aparece na linha totalizadora do PDF.
 3. Normalize UNIDADES: se o PDF diz "(Em milhares de reais)", multiplique todos os valores por 1.000.
    Exemplo: se a tabela mostra "24.102", o valor JSON deve ser 24102000.0
-4. FCO (Fluxo de Caixa Operacional): use o valor da linha "Caixa líquido das atividades operacionais"
-   (o SUBTOTAL do grupo operacional, antes de investimento e financiamento).
-5. Para o período: use a data de encerramento do exercício no formato "YYYY-MM-DD".
-6. "tipo": use "DFP" para exercício anual (31/12), "ITR" para trimestral.
+4. DFC - MAPEAMENTO CVM:
+   - 6.01: "Caixa líquido (aplicado nas) proveniente das atividades operacionais". É o TOTAL FINAL da seção operacional.
+   - 6.02: "Caixa líquido (aplicado nas) proveniente das atividades de investimento".
+   - 6.03: "Caixa líquido (aplicado nas) proveniente das atividades de financiamento".
+5. ATENÇÃO COLUNAS: Certifique-se de extrair o valor da coluna correspondente ao período mais recente (geralmente a primeira coluna de valores após a descrição). Ignore saldos comparativos de anos anteriores que aparecem na mesma tabela.
+6. Período: use a data de encerramento no formato "YYYY-MM-DD" e "tipo" (DFP para anual, ITR para trimestral).
 
 ESTRUTURA JSON OBRIGATÓRIA (responda apenas o JSON, sem explicações):
 {

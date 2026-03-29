@@ -18,7 +18,8 @@ import requests
 
 SCRIPT_DIR = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
-EMPRESAS_CSV = SCRIPT_DIR / "empresas.csv"
+EMPRESAS_CSV = PROJETO_RAIZ / "empresas.csv"
+EMISSOES_CSV = PROJETO_RAIZ / "emissoes.csv"
 LANDING_ANBIMA = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
 CVM_CAD_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
 
@@ -76,6 +77,48 @@ def escaneia_emissores_anbima() -> dict[str, str]:
     print(f"  {len(emissores_descobertos)} emissores encontrados na pasta ANBIMA.")
     return emissores_descobertos
 
+def sincronizar_cnpjs_emissoes():
+    """Popula os CNPJs faltantes em emissoes.csv consultando a landing zone da ANBIMA."""
+    print("Sincronizando CNPJs faltantes em emissoes.csv...")
+    if not EMISSOES_CSV.exists():
+        print(f"  ERRO: {EMISSOES_CSV.name} não encontrado.")
+        return
+
+    # Lê as emissões
+    emissions = []
+    with open(EMISSOES_CSV, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        emissions = list(reader)
+
+    updated = 0
+    for row in emissions:
+        ticker = row.get("ticker", "").strip()
+        # Limpa o CNPJ atual para verificar se está vazio
+        current_cnpj = normaliza_cnpj(row.get("cnpj_emissor", ""))
+        
+        if not current_cnpj and ticker:
+            json_path = LANDING_ANBIMA / ticker / "caracteristicas.json"
+            if json_path.exists():
+                try:
+                    with open(json_path, encoding="utf-8") as f:
+                        dados = json.load(f)
+                        cnpj = normaliza_cnpj(dados.get("emissao", {}).get("emissor", {}).get("cnpj", ""))
+                        if cnpj:
+                            row["cnpj_emissor"] = cnpj
+                            updated += 1
+                except Exception as e:
+                    print(f"  ERRO ao ler JSON de {ticker}: {e}")
+
+    if updated > 0:
+        with open(EMISSOES_CSV, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(emissions)
+        print(f"  {updated} CNPJs sincronizados em {EMISSOES_CSV.name}.")
+    else:
+        print("  Nenhum CNPJ novo para sincronizar em emissoes.csv.")
+
 # ── Inteligência de Resolução (CVM) ───────────────────────────────────────────
 
 def buscar_cvm_inteligente(cadastro: list[dict], cnpj: str) -> dict | None:
@@ -115,6 +158,9 @@ def main():
     # 1. Carrega o que já temos
     empresas_atuais = carregar_csv_empresas()
     mapa_empresas = {normaliza_cnpj(e["cnpj"]): e for e in empresas_atuais if e.get("cnpj")}
+    
+    # 1.1 Sincroniza CNPJs de emissões
+    sincronizar_cnpjs_emissoes()
     
     # 2. Descoberta ANBIMA
     descobertas = escaneia_emissores_anbima()
@@ -158,7 +204,7 @@ def main():
             writer.writerow(emp)
 
     print(f"\nConcluído! {EMPRESAS_CSV.name} atualizado.")
-    print(f"Próximo passo: python 02_download_cvm.py")
+    print(f"Próximo passo: python 03_download_cvm.py")
     print("=" * 60 + "\n")
 
 if __name__ == "__main__":

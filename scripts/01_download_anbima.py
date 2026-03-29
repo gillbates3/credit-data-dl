@@ -24,7 +24,7 @@ PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING_ANBIMA = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
 
 def carregar_tickers() -> list[str]:
-    csv_path = SCRIPT_DIR / "emissoes.csv"
+    csv_path = PROJETO_RAIZ / "emissoes.csv"
     tickers = []
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -247,7 +247,7 @@ def main():
 
     print("\n" + "-" * 60)
     print(f"Downloads concluídos: {sucessos} com dados, {erros} vazios/com erro.")
-    print("Próximo passo: Rodar o script `04b_parser_anbima.py`")
+    print("Próximo passo: Rodar o script `02_descobrir_emissores.py`")
 
 if __name__ == "__main__":
     main()

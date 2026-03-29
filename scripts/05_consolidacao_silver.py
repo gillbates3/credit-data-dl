@@ -56,7 +56,7 @@ SCRIPT_DIR   = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING      = PROJETO_RAIZ / "data" / "01_landing" / "cvm_raw"
 SILVER       = PROJETO_RAIZ / "data" / "02_silver"
-EMPRESAS_CSV   = SCRIPT_DIR / "empresas.csv"
+EMPRESAS_CSV   = PROJETO_RAIZ / "empresas.csv"
 MANUAL_UPLOADS = PROJETO_RAIZ / "data" / "01_landing" / "manual_uploads"
 
 # Nível máximo de conta a incluir (2 = "3.01", exclui "3.01.01" e mais fundo)
@@ -290,8 +290,8 @@ def main():
         nome = empresa.get("nome", "").strip()
         cod_cvm = empresa.get("cod_cvm", "").strip()
 
-        if not cnpj or not cod_cvm:
-            print(f"  PULANDO {nome} — cnpj ou cod_cvm ausente")
+        if not cnpj:
+            print(f"  PULANDO {nome} — cnpj ausente")
             continue
 
         print(f"  Processando: {nome[:55]}", end="  ")
@@ -300,17 +300,14 @@ def main():
         json_empresa = construir_json_empresa(empresa, csvs_por_chave)
         n_periodos_cvm = len(json_empresa["periodos"])
 
-        # 2. Se não encontrou CVM, tenta manual
-        if n_periodos_cvm == 0:
-            print("(CVM: vazio)", end=" ")
-            manual_dados = carregar_manual_dados(cnpj)
-            if manual_dados:
-                print("→ Manual: OK", end=" ")
-                # Mescla dados manuais (deve vir no formato de periodos)
-                for periodo, dados in manual_dados.get("periodos", {}).items():
-                    json_empresa["periodos"][periodo] = dados
-            else:
-                print("→ Manual: vazio", end=" ")
+        # 2. Sempre tenta manual para mesclar/complementar
+        manual_dados = carregar_manual_dados(cnpj)
+        if manual_dados:
+            n_manual = len(manual_dados.get("periodos", {}))
+            print(f"(CVM: {n_periodos_cvm} per. + Manual: {n_manual} per.)", end=" ")
+            # Mescla dados manuais (Manual tem prioridade sobre CVM se houver conflito)
+            for periodo, dados in manual_dados.get("periodos", {}).items():
+                json_empresa["periodos"][periodo] = dados
         else:
             print(f"(CVM: {n_periodos_cvm} períodos)", end=" ")
 
@@ -320,17 +317,18 @@ def main():
             continue
 
         if not args.dry_run:
-            saida = SILVER / f"{cnpj}.json"
+            saida = SILVER / cnpj / f"{cnpj}.json"
+            saida.parent.mkdir(parents=True, exist_ok=True)
             with open(saida, "w", encoding="utf-8") as f:
                 json.dump(json_empresa, f, ensure_ascii=False, indent=2)
-            print(f"→ Salvo: {saida.name}")
+            print(f"→ Salvo: {cnpj}/{cnpj}.json")
 
     if args.dry_run:
         print("\n[dry-run] Nenhum arquivo foi salvo.")
     else:
-        arquivos = list(SILVER.glob("*.json"))
+        arquivos = list(SILVER.rglob("*.json"))
         print(f"\nConcluído! {len(arquivos)} arquivo(s) em {SILVER}")
-        print("\nPróximo passo: python 05_validar_silver.py")
+        print("\nPróximo passo: python scripts/06_parser_silver_anbima.py")
 
 
 if __name__ == "__main__":
