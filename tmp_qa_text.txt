@@ -1,0 +1,549 @@
+--- PAGE 1 ---
+Demonstrações Financeiras Individuais e
+Consolidadas
+QMC Telecom do Brasil Cessão de
+Infraestrutura S.A. e empresas controladas
+31 de dezembro de 2024
+com Relatório do Auditor Independente
+
+--- PAGE 2 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+Índice
+Relatório do auditor independente sobre as demonstrações financeiras individuais e
+consolidadas ......................................................................................................................................... 1
+Demonstrações financeiras
+Balanços patrimoniais ........................................................................................................................... 6
+Demonstrações dos resultados ............................................................................................................. 8
+Demonstrações dos resultados abrangentes ........................................................................................ 9
+Demonstrações das mutações do patrimônio líquido .......................................................................... 10
+Demonstrações dos fluxos de caixa .................................................................................................... 11
+Notas explicativas às demonstrações financeiras individuais e consolidadas ..................................... 12
+
+--- PAGE 8 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Balanços patrimoniais
+31 de dezembro de 2024 e 2023
+(Em milhares de reais - R$)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Ativo
+Circulante
+Caixa e equivalentes a caixa 4 121.107 92.326 135.491 94.016
+Contas a receber 5 42.200 34.801 45.129 37.727
+Impostos a recuperar 6.898 6.035 7.025 6.026
+Receitas a faturar 6 13.565 5.204 16.565 5.672
+Adiantamentos a fornecedores 7 14.396 31.160 14.426 36.173
+Despesas antecipadas 4.095 663 4.099 768
+Total do ativo circulante 202.261 170.189 222.735 180.382
+Não circulante
+Receitas a faturar 6 26.664 36.208 29.423 40.756
+Despesas antecipadas 13.003 19.374 13.038 19.375
+Partes relacionadas 19 37.894 15.369 - -
+Investimento em empresas controladas 11 237.776 190.599 - -
+Ativos de direito de uso 10 453.059 457.108 315.657 334.589
+Ativo imobilizado 8 951.868 804.416 1.141.855 947.828
+Ativo intangível 9 35.184 50.493 105.738 123.341
+Total do ativo não circulante 1.755.448 1.573.567 1.605.711 1.465.889
+Total do ativo 1.957.709 1.743.756 1.828.446 1.646.271
+6
+
+--- PAGE 10 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Demonstrações dos resultados
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Em milhares de reais - R$)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Receita operacional líquida 21 328.698 285.861 343.934 304.187
+Custos com depreciação e amortização 22 (147.052) (129.376) (143.632) (130.171)
+Custos de operação 22 (15.279) (8.156) (20.246) (9.523)
+Custostotal (162.331) (137.532) (163.878) (139.694)
+Lucro bruto 166.367 148.329 180.056 164.493
+Resultado de equivalência patrimonial 11 15.033 8.550 - -
+Perdas com baixas de ativos fixos 8 (4.310) (2.805) (4.643) (2.884)
+Despesas gerais eadministrativas 22 (61.661) (61.692) (74.023) (78.978)
+Lucro operacional 115.429 92.382 101.390 82.631
+Receitas (despesas) financeiras
+Outras receitas (despesas) operacionais - - - -
+Receitas financeiras 25 7.442 10.169 7.543 10.904
+Despesas financeiras com Debêntures 25 (139.280) (111.662) (139.280) (111.662)
+Despesas financeiras 25 (95.428) (69.703) (78.663) (58.148)
+Despesas financeiras, líquidas (227.266) (171.196) (210.400) (158.906)
+Prejuízo antes doimposto de renda e da
+contribuição social (111.837) (78.814) (109.008) (76.275)
+Imposto de renda e contribuição social
+Correntes 23 (1.144) - (3.975) (2.555)
+Prejuízo do exercício (112.981) (78.814) (112.983) (78.830)
+Total controladora (112.981) (78.814)
+Total não controladora (112.983) (78.830)
+(2) (16)
+Quantidade de quotas: 32.079 29.601 32.079 29.601
+Prejuízo básico e diluído por quota (3.522) (2.662) (3.522) (2.663)
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+8
+
+--- PAGE 11 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Demonstrações dos resultados abrangentes
+Exercício findos em 31 de dezembro de 2024 e 2023
+(Em milhares de reais - R$)
+Controladora Consolidado
+2024 2023 2024 2023
+Prejuízo do exercício (112.981) (78.814) (112.984) (78.830)
+Outros componentes do resultado abrangente - - - -
+Total do resultado abrangente do exercício (112.981) (78.814) (112.984) (78.830)
+Atribuível a
+Controladora (112.981) (78.814)
+Participação de não controladores (2) (16)
+(112.983) (78.830)
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+9
+
+--- PAGE 12 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Demonstrações das mutações do patrimônio líquido
+Exercício findos em 31 de dezembro de 2024 e 2023
+(Em milhares de reais - R$)
+Atribuível aos acionistas daControladora
+Patrimônio Participação Total do
+Capital Capital a Prejuízos Líquido dos Sócios dos não Patrimônio
+Social Integralizar acumulados da Controladora Controladores Líquido
+Em 31 de dezembro de 2022 355.212 (20.317) (203.580) 131.315 (3.938) 127.377
+Prejuízo do exercício - - (78.814) (78.814) 4.041 (74.773)
+Em 31 de dezembro de 2023 355.212 (20.317) (282.394) 52.501 103 52.604
+Aumento de capital social - 20.317 - 20.317 - 20.317
+Capital a integralizar - 36.976 - 36.976 - 36.976
+Absorção de Prejuízo
+Acumulados - - 14.652 14.652 - 14.652
+Prejuízo do exercício - - (112.981) (112.981) (62) (113.043)
+Em 31 de dezembro de 2024 355.212 36.976 (380.723) 11.465 41 11.506
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+10
+
+--- PAGE 13 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Demonstrações dos fluxos de caixa
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Em milhares de reais - R$)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Fluxo de caixa das atividades operacionais:
+Prejuízo antes do imposto de renda e da
+contribuição social (111.837) (78.814) (109.008) (78.830)
+Ajustes para conciliar o resultado ao caixa
+líquido:
+Depreciação e amortização 8 90.146 71.184 95.953 81.300
+Amortização de arrendamento 10 56.906 51.397 47.677 44.334
+Reconhecimento de Juros arrendamento 69.862 63.065 51.199 50.048
+Reconhecimento de Juros de dívidas 135.232 104.652 135.232 104.652
+Remensuração de arrendamento (6.348) 5.660 14.899 -
+Reconhecimento de juros de dívidas -
+intercompany 1.195 450 1.278 558
+Provisão de créditos de liquidação duvidosa 6 (3.668) 1.643 (3.657) 1.707
+Perda na alienação de ativos 8 4.310 2.802 4.571 5.489
+Impairment Ativo Imobilizado 8 - 2.872 - 2.872
+Resultado de equivalência patrimonial (15.033) (8.594) - -
+Despesas bancárias de debêntures 4.048 7.010 4.048 7.010
+Alterações nos ativos epassivos operacionais
+Diminuição (aumento) no ativo:
+Contas a receber de clientes (3.730) (20.086) (3.745) (11.432)
+Impostos a recuperar (863) (2.317) (1.000) (2.048)
+Partes relacionadas 36.862 (11.272) 37.269 -
+Receitas a faturar 1.182 (28.119) 440 (9.858)
+Arrendamento mercantil (41.287) (140.492) (43.646) (14.947)
+Outros ativos (1.001) (63.717) 3.696 (13.300)
+Aumento (diminuição) no passivo:
+Contas a pagar e provisões (43.428) 42.954 (39.753) 33.775
+Obrigações trabalhistas 1.692 6.694 1.789 2.807
+Juros pagos (128.159) (113.371) (128.159) (113.371)
+Juros pagos arrendamento mercantil (69.862) (63.065) (51.199) (50.048)
+Pagamento do principal de arrendamentos (43.587) (37.015) (39.728) (34.214)
+Impostos a pagar (2.483) 1.716 (2.102) 3.301
+Passivo de arrendamento 47.333 136.125 28.435 22.656
+Outros passivos 21.496 108.197 22.460 47.747
+Caixa líquido gerado pelas atividades
+operacionais: (1.202) 39.559 26.933 80.208
+Impostos pagos - - (2.831) (2.555)
+Caixa líquido (aplicado nas) gerado pelas
+atividades operacionais (1.202) 39.559 24.102 77.653
+Aquisição de controlada, líquida do caixa adquirido - 2.719 -
+Aquisição de imobilizado e intangível 8 e 9 (209.996) (189.200) (259.917) (251.538)
+Aumento de capital em empresa controlada (37.313) (31.575) - -
+Caixa líquido aplicado nas atividades de
+investimentos (247.309) (218.056) (259.917) (251.538)
+Fluxo de caixa das atividades de financiamentos:
+Empréstimos e financiamentos obtidos - local 16 220.000 1.080.000 220.000 1.080.000
+Empréstimos pagos - (800.000) - (800.000)
+Despesas bancárias de empréstimos obtidos pagos - (18.911) - (18.911)
+Pagamento Empréstimos e financiamentos -
+intercompany - (39.443) (39.443)
+Aumento de capital social 20.317 - 20.317 -
+Capital a integralizar 36.976 36.976
+Caixa líquido gerado pelas atividades de
+financiamentos 277.293 221.646 277.293 221.646
+Aumento de caixa e equivalentes de caixa 28.781 43.150 41.475 42.761
+Caixa eequivalentes de caixa, início do exercício 92.326 49.175 94.016 51.254
+Caixa e equivalentes de caixa, final do exercício 121.107 92.326 135.491 94.016
+11
+
+--- PAGE 16 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+1. Contexto operacional--Continuação
+Incorporação da QMC DAS do Brasil Cessão de Infraestrutura Ltda.--Continuação
+O Grupo decidiu pela incorporação para otimização dos gastos administrativos, comerciais e
+financeiros, bem como na racionalização e simplificação das operações e metas organizacionais.
+O Grupo optou por mensurar a participação de não controladores na adquirida ao valor justo.
+A tabela abaixo resume os valores dos ativos adquiridos e passivos assumidos na data da
+aquisição em 31 de janeiro de 2023:
+Ativos
+Caixa e equivalentes a caixa 2.719
+Contas a receber 9.830
+Impostos e contribuições a recuperar 370
+Despesas antecipadas 102
+Adiantamentos a fornecedores 12.958
+Receitas a faturar 21.174
+Ativo imobilizado 301.939
+Ativo Intangível 8.236
+Ativos de direito de uso 79.786
+Investimento em empresa controlada 50.584
+487.698
+Passivos
+Contas a pagar (3.607)
+Provisões (1.344)
+Partes relacionadas (516)
+Salários e Relacionados a Pagar (3.943)
+Passivos de arrendamento (91.174)
+Impostos a pagar (1.200)
+Outros passivos (378)
+Provisão para desmobilização (42.584)
+Partes relacionadas (34.445)
+Capital social integralizado (295.842)
+Adiantamento para futuro aumento de capital (55.865)
+530.898
+Total dos passivos identificáveis, líquido 43.200
+14
+
+--- PAGE 19 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+2. Políticas contábeis--Continuação
+2.1. Base de consolidação--Continuação
+Nas Demonstrações Financeiras individuais, os investimentos do Grupo em suas controladas
+são contabilizados com base no método da equivalência patrimonial.
+As demonstrações financeiras consolidadas do Grupo incluem:
+% participação
+Nome Principal atividade País-sede 2024 2023
+Paraná Terras Ltda. Compra e venda ou arrendamento de
+imóveis, bem como a locação dos mesmos
+a terceiros. Brasil 99,9900% 99,9900%
+Quest Telecomunicações Ltda. Exploração de serviços de comunicação
+multimídia prestados no âmbito nacional e
+internacional e prestação de serviços de
+acesso à internet. Brasil 99,9510% 99,8367%
+2.2. Conversão de moeda estrangeira
+a) Moeda funcional
+A moeda funcional da controladora e a moeda de apresentação das Demonstrações
+Financeiras individuais e consolidadas do Grupo é o real e estão apresentadas em
+Milhares de Reais.
+b) Operações e saldos
+As operações com moedas estrangeiras são convertidas na moeda funcional com base
+nas taxas de câmbio vigentes nas datas das transações. Os ganhos e as perdas
+cambiais resultantes da liquidação dessas transações e da conversão dos ativos e
+passivos monetários denominados em moeda estrangeira pelas taxas de
+17
+
+--- PAGE 29 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+2. Políticas contábeis--Continuação
+2.14. Pronunciamentos novos ou revisados aplicados pela primeira vez em 2024--
+Continuação
+Normas e Emendas a Normas Alterações
+IAS 7 correlato ao CPC 03 (R2): Demonstração
+dos fluxos de caixa
+Alterado pelos Acordos de financiamento de
+fornecedores (Emendas à IAS 7 e à IFRS 7)
+IFRS 7 correlato ao CPC 40: Instrumentos
+Financeiros: Divulgações
+2.15. Normas emitidas, mas ainda não vigentes
+Normas e Emendas a Normas Alterações Vigências
+IFRS 18: Apresentação e Divulgação nas O IFRS 18 introduz novos requisitos para 1º de janeiro de
+Demonstrações Financeiras equivalente apresentação dentro da demonstração do 2027
+ao CPC 26 (R1) - Apresentação de resultado do exercício, incluindo totais e
+Demonstrações Financeiras subtotais especificados. Além disso,as
+entidades são obrigadas a classificar todas as
+receitas e despesas dentro da demonstração
+do resultadodo exercício
+IFRS 19: Subsidiárias sem Permite que entidades elegíveis optem por 1º de janeiro de
+Responsabilidade Pública: Divulgações aplicar seus requisitos de divulgação reduzidos 2027
+enquanto ainda aplicam os requisitos de
+reconhecimento, mensuraçãoe apresentação
+em outros padrões contábeis IFRS. Para ser
+elegível, no final do período de relatório,uma
+entidade deve ser uma controlada conforme
+definido no IFRS 10 (CPC 36 (R3) –
+DemonstraçõesConsolidadas)
+CPC 18 (R3) - Investimento em Coligada, Aplicação do método da equivalência patrimonial 1º de janeiro de
+Em Controlada e Empreendimento (MEP) para a mensuração de investimentos 2025.
+Controlado Em Conjunto e a ICPC 09 - em controladas nas Demonstrações Contábeis
+Demonstrações Contábeis Individuais, Individuais, refletindo a alteração nas normas
+Demonstrações Separadas, internacionais que agora permitem essa prática
+Demonstrações Consolidadas e nas Demonstrações Contábeis Separadas
+Aplicação do Método da Equivalência
+Patrimonial
+CPC 02 (R2) – Efeitos nas Mudanças nas As alterações buscam definir o conceito de 1º de janeiro de
+Taxas de Câmbio e Conversão de moeda conversível e orientam sobre os 2025
+Demonstrações Contábeis e CPC 37 (R1) procedimentos para moedas não conversíveis,
+– Adoção Inicial das Normas determinando que a conversibilidade deve ser
+Internacionais de Contabilidade avaliada na data de mensuração com base no
+propósito da transação
+27
+
+--- PAGE 30 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+3. Julgamentos, estimativas e premissas contábeis significativas
+Julgamentos
+A preparação das demonstrações financeiras individuais e consolidadas do Grupo requer que a
+Administração faça julgamentos, estimativas e adote premissas que afetam os valores
+apresentados de receitas, despesas, ativos e passivos, e as respectivas divulgações, bem como
+as divulgações de passivos contingentes. No processo de aplicação das políticas contábeis do
+Grupo, a Administração fez os seguintes julgamentos que têm efeito mais significativo sobre os
+valores reconhecidos nas demonstrações financeiras individuais e consolidadas:
+Determinação do prazo de arrendamento de contratos que possuam cláusulas de opção de
+renovação ou rescisão (Grupo como arrendatário)
+O Grupo determina o prazo do arrendamento como o prazo contratual não cancelável, juntamente
+com os períodos incluídos em eventual opção de renovação na medida em que essa renovação
+seja avaliada como razoavelmente certa e com períodos cobertos por uma opção de rescisão do
+contrato na medida em que também seja avaliada como razoavelmente certa.
+O Grupo não possui contratos de arrendamento (como arrendatário) que incluem opções de
+renovação e rescisão automática. O Grupo aplica julgamento ao avaliar se é razoavelmente certo
+se deve ou não exercer a opção de renovar ou rescindir o arrendamento. Nessa avaliação,
+considera todos os fatores relevantes que criam um incentivo econômico para o exercício da
+renovação ou da rescisão. Após a mensuração inicial, o Grupo reavalia o prazo do arrendamento
+se houver um evento significativo ou mudança nas circunstâncias que esteja sob seu controle e
+afetará sua capacidade de exercer ou não exercer a opção de renovar ou rescindir (por exemplo,
+realização de benfeitorias ou customizações significativas no ativo arrendado).
+Historicamente, o Grupo tem exercido a opção de renovação para esses arrendamentos, que são
+basicamente referentes ao escritório (administrativo), impressoras e máquinas de café. E, por
+serem contratos de valores não significativos, administrativos e de período não tão longos, a
+administração decidiu pela não aplicação da norma CPC 06 (R2) Arrendamento Mercantil para
+estes casos.
+Estimativas e premissas
+As Demonstrações Financeiras individuais e consolidadas foram elaboradas com apoio em
+diversas bases de avaliação utilizadas nas estimativas contábeis. As estimativas contábeis
+envolvidas na preparação das demonstrações financeiras foram apoiadas em fatores objetivos e
+subjetivos, com base no julgamento da Administração para determinação do valor adequado a ser
+registrado nas demonstrações financeiras.
+28
+
+--- PAGE 33 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+3. Julgamentos, estimativas e premissas contábeis significativas--Continuação
+Estimativas e premissas--Continuação
+Determinação do prazo de arrendamento--Continuação
+Para arrendamentos de galpões e equipamentos, os fatores a seguir normalmente são os mais
+relevantes:
+ Se a rescisão (ou não prorrogação) incorrer em multas significativas, é razoavelmente certo de
+que o Grupo irá efetuar a prorrogação (ou não irá efetuar a rescisão).
+ Se houver benfeitorias em imóveis de terceiros com saldo residual significativo, é razoavelmente
+certo de que o Grupo irá prorrogar (ou não rescindir) o arrendamento.
+ Adicionalmente, o Grupo considera outros fatores, incluindo as práticas passadas referentes aos
+períodos de utilização de tipos específicos de ativos (arrendados ou próprios) e de duração de
+arrendamentos, e os custos e a disrupção nos negócios necessárias para a substituição do ativo
+arrendado.
+A maioria das opções de prorrogação em arrendamentos de escritórios e outros equipamentos não
+foi incluída no passivo de arrendamento porque o Grupo pode substituir estes ativos sem custo
+significativo ou interrupção nos negócios.
+4. Caixa e equivalentes de caixa
+Controladora Consolidado
+2024 2023 2024 2023
+Caixas e bancos 12.311 12.064 12.637 13.739
+Aplicações financeiras 108.796 80.262 122.854 80.277
+121.107 92.326 135.491 94.016
+As aplicações financeiras referem-se a operações de renda fixa, por meio de Certificados de
+Depósito Bancário (CDB). A rentabilidade é diária e atrelada à taxa do DI (taxa média dos depósitos
+interfinanceiros, calculada e divulgada diariamente pela CETIP), com vencimento menor que 90
+dias, e são remunerados a uma taxa média de 97,50% e 98% do CDI para 2024 e 100% em 2023.
+31
+
+--- PAGE 43 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+10. Arrendamentos–Continuação
+Cronograma de vencimento dos pagamentos de arrendamento brutos
+2024
+Controladora Consolidado
+2025 47.698 48.619
+2026 51.354 52.329
+2027 53.541 54.451
+2028 51.725 52.427
+2029 48.775 49.543
+2030em diante 271.860 130.834
+524.953 388.202
+11. Investimento em empresa controlada direta e indireta
+A participação societária no Grupo em controlada direta e/ou indireta, avaliada pelo método de
+equivalência patrimonial é demonstrada a seguir:
+Aumento de Outros
+Controladas diretas 2023 capital Equivalência Resultados 2024
+Paraná Terras Ltda 127.853 17.527 19.706 (11.855) 146.567
+Quest Telecomunicações 62.746 26.450 (4.703) 52 84.546
+Total 190.599 43.977 15.003 (11.803) 237.776
+Os investimentos entre empresas referem-se a aportes de capital efetuados nos montantes acima.
+Seguem abaixo a demonstração das principais informações financeiras das controladas:
+2024 2023
+Lucro Lucro
+(prejuízo) (prejuízo)
+Patrimônio líquido do Patrimônio líquido do
+Controladas diretas Ativo Passivo líquido exercício Ativo Passivo líquido exercício
+Paraná Terras Ltda 170.056 16.826 153.230 19.706 144.268 16.415 127.853 13.753
+Quest Telecomunicações 132.058 47.470 84.588 (4.705) 104.956 42.064 62.892 (10.439)
+41
+
+--- PAGE 45 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+15. Impostos a pagar
+Controladora Consolidado
+2024 2023 2024 2023
+Obrigações fiscais a recolher 742 628 1.626 1.240
+Impostos retidos a recolher 2.089 3.542 2.683 4.027
+Total de impostos a pagar 2.831 4.170 4.309 5.267
+16. Debêntures
+Em 07 de dezembro de 2023 o Grupo assinou seu 3º contrato (escritura) para emissão de
+Debêntures. O contrato teve por vigência 5 anos e taxa de juros de CDI + 3% a.a. até 15 de junho
+de 2026, após essa data será de 3,25% a.a. Os recursos serão utilizados integral e exclusivamente
+para financiar a construção, aquisição ou melhoria de torres, aquisição de imóveis ou pagamento
+de compromissos corporativos gerais.
+A emissão de 1.250.000 debêntures, equivalente a R$ 1.250.000.000 assinada em 07 de dezembro
+de 2023. Desta forma, apenas a 3ª emissão de debêntures está apresentada em nossos Balanço
+Patrimonial e Demonstrações de Resultado e Fluxo de Caixa.
+Controladora e
+Consolidado
+Total de juros e debêntures a pagar em 2022 628.718
+Captação 1.080.000
+Custos de captação (18.911)
+Juros incorridos 104.652
+Pagamento de juros (113.370)
+Pagamento de principal (800.000)
+Total de juros e debêntures a pagar em 2023 881.089
+Controladora e
+Consolidado
+Total de juros e debêntures a pagar em 2023 900.000
+Captação 220.000
+Juros incorridos 135.232
+Pagamento de juros (128.159)
+Total de juros e debêntures a pagar em 2024 1.127.073
+Juros de debêntures curto prazo 7.073
+Debêntures longo prazo 1.120.000
+Em 31 de dezembro de 2024, o custo de captação a amortizar, registrado no grupo de outros ativos, era de R$16.303
+(R$18.991 em 31 de dezembro de 2024).
+43
+
+--- PAGE 51 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+23. Imposto de renda e contribuição social--Continuação
+a) Demonstração do cálculo dos créditos tributários (encargos) com imposto de renda e
+contribuição social--Continuação
+O imposto de renda e a contribuição social do exercício são calculados com base nas
+alíquotas de 15%, acrescidas do adicional de 10% sobre o lucro tributável excedente de R$
+240 mil para imposto de renda e 9% sobre o lucro tributável para contribuição social sobre o
+lucro líquido, e consideram a compensação de prejuízos fiscais e base negativa de
+contribuição social, limitada a 30% do lucro real do exercício.
+A despesa com imposto de renda e contribuição social refere-se ao imposto de renda e
+contribuição social corrente, com base no regime de tributação do lucro real e presumido com
+apuração anual trimestral respectivamente.
+24. Contingências
+Em dezembro de 2024, o Grupo constituiu contingências cíveis no valor R$123 e contingências
+fiscais no valor de R$4, ambas foram registradas nas demonstrações financeiras individuais e
+consolidadas. Em dezembro de 2023, o Grupo possuía contingências passivas em andamento,
+cujas avaliações por seus assessores jurídicos foram consideradas de risco provável e
+registradas nas Demonstrações Financeiras individuais no montante total de R$77, e
+consolidadas, no montante total de R$77.
+Outras contingências cíveis foram avaliadas como possíveis em dezembro de 2024 no montante
+de R$1.150, e eventuais perdas financeiras foram mensuradas no montante de R$1.415 para
+2024.
+25. Resultado financeiro
+As despesas financeiras são substancialmente compostas pelos juros das debêntures e de
+arrendamento mercantis.
+As receitas financeiras são decorrentes de uma aplicação dos recursos obtidos deste empréstimo.
+O detalhamento das despesas financeiras segue abaixo:
+Controladora Consolidado
+2024 2023 2024 2023
+Rendimento de Aplicação Financeira 7.027 4.942 7.123 5.207
+Outras Receitas Financeiras 415 5.227 420 5.697
+7.442 10.169 7.543 10.904
+49
+
+--- PAGE 52 ---
+QMC Telecom do Brasil Cessão de Infraestrutura S.A. e empresas controladas
+Notas explicativas às demonstrações financeiras individuais e consolidadas--Continuação
+31 de dezembro de 2024
+(Em milhares de reais - R$)
+25. Resultado financeiro--Continuação
+Controladora Consolidado
+2024 2023 2024 2023
+Despesas bancárias com debêntures 4.048 7.010 4.048 7.010
+Juros de debêntures locais 135.232 104.652 135.232 104.652
+Juros de empréstimosintercompany 1.195 450 1.278 558
+Juros de arrendamento mercantil 69.862 63.065 51.199 50.005
+Variação cambial 15.771 270 17.353 269
+Outros 8.600 5.918 8.833 7.316
+234.708 181.365 217.943 169.810
+Despesas financeiras com Debêntures (139.280) (111.662) (139.280) (111.662)
+Despesas financeiras (95.428) (69.703) (78.663) (58.148)
+234.708 181.365 217.943 169.810
+26. Instrumentos financeiros por categoria
+Controladora
+Ativos ao
+custo
+amortizado Total
+31 de dezembro de 2023
+Ativos, conforme o balanço patrimonial
+Caixa e equivalentes de caixa 92.326 92.326
+Contas a receber 34.801 34.801
+Partes relacionadas 15.369 15.369
+142.496 142.496
+31 de dezembro de 2024
+Ativos, conforme o balanço patrimonial
+Caixa e equivalentes de caixa 121.107 121.107
+Contas a receber 42.200 42.200
+Partes relacionadas 37.894 37.894
+201.201 201.201
+Consolidado
+Ativos ao
+custo
+amortizado Total
+31 de dezembro de 2023
+Ativos, conforme o balanço patrimonial
+Caixa e equivalentes de caixa 94.016 94.016
+Contas a receber 37.727 37.727
+131.743 131.743
+31 de dezembro de 2024
+Ativos, conforme o balanço patrimonial
+Caixa e equivalentes de caixa 135.491 135.491
+Contas a receber 45.129 45.129
+180.620 180.620
+50
+

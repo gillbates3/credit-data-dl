@@ -1,0 +1,1034 @@
+--- PAGE 2 ---
+Triple Play Brasil Participações S.A.
+Demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+Índice
+Release de resultados 4T24 ................................................................................................................ 1
+Declaração dos diretores sobre as demonstrações financeiras individuais e consolidadas no
+exercício findo em 31 de dezembro de 2024 ...................................................................................... 16
+Declaração dos diretores sobre o relatório do auditor independente .................................................. 17
+Relatório do auditor independente sobre as demonstrações financeiras individuais e
+consolidadas ...................................................................................................................................... 18
+Balanços patrimoniais ........................................................................................................................ 24
+Demonstrações dos resultados .......................................................................................................... 26
+Demonstrações dos resultados abrangentes ..................................................................................... 27
+Demonstrações das mutações do patrimônio líquido ......................................................................... 28
+Demonstrações dos fluxos de caixa ................................................................................................... 29
+Demonstrações do valor adicionado .................................................................................................. 31
+Notas explicativas às demonstrações financeiras individuais e consolidadas .................................... 32
+
+--- PAGE 4 ---
+Alares Divulga Resultados do
+Quarto Trimestre de 2024 e do ano de 2024
+São Paulo, 18 de março de 2025 - A Triple Play Brasil Participações S.A. ("Alares" ou
+"Companhia"), holding de empresas de banda larga de alta velocidade que atuam com a marca
+Alares, anuncia os resultados consolidados do quarto trimestre de 2024 (4T24) e do ano de 2024.
+As demonstrações financeiras individuais e consolidadas da Companhia são elaboradas de
+acordo com as práticas contábeis adotadas no Brasil e com as normas internacionais de relatório
+financeiro (IFRS) emitidas pelo International Accounting Standards Board (IASB), como também,
+baseadas na Lei das Sociedades por Ações e nas regulamentações da Comissão de Valores
+Mobiliários (CVM).
+Sumário dos Resultados 2024
+EBITDA
+1 | Release de Resultados 4T24
+
+--- PAGE 5 ---
+Mensagem da Administração
+Expansão e Rentabilidade
+O ano de 2024 foimarcado por conquistas significativas para a Alares, que fortaleceu sua posição como um dos
+principais provedores de internet no Sudeste do Brasil a partir da aquisição da empresa Azza. O
+comprometimento da companhia com eficiência e qualidade em produtos, serviços e atendimento, continua
+alavancando oseu crescimento,rentabilidade, satisfaçãode seusclientesecolaboradores.
+A Alares alcançou um EBITDA de R$ 338,8 milhões, representando um crescimento de 78% em relação ao ano
+anterior. A margem EBITDA também apresentouum avanço significativo, chegando a 45%, um aumento de 11,5
+pontos percentuais em comparação a 2023. A receita líquida totalizou R$ 753,6 milhões, com crescimento de
+mais de 32,7% comparado a 2023, refletindo a capacidade da companhia em crescer orgânica e
+inorganicamente, expandindo sua margem a partir de uma maior alavancagem operacional e forte disciplina
+financeiraedeexecução.
+A base de assinantes atingiu 793 mil, registrando um crescimento de 26%, impulsionado tanto pelo ganho
+líquido de clientes em suas regiões pré-existentes de atuação quanto pela aquisição da Azza. A Alares ampliou
+sua presençapara ototal de 228cidadese expandiusua infraestruturatendo agoraa capacidade de atender 3,2
+milhões de residências,umaumentode27%emcomparaçãoa2023.
+A completa integração de processos e sistemas da Alares têm sido uma importante alavanca de expansão dos
+resultados da empresa, proporcionando o constante aumento de eficiência e permitindo a rápida captura de
+sinergias a partirde aquisições. A eficiência da área de TI nas integrações e projetos, a capacidade de entender
+o negócio de maneira granular e a disciplina de execução, têm permitido que a empresa acelere a utilização de
+inteligência artificial de forma objetiva e pragmática, trazendo diferenciais para a Alares, como por
+exemplo ferramentas que auxiliam na melhoria de experiência e retenção de clientes além da otimização de
+eficiênciade processosoperacionais de campoedecall center.
+O compromisso com a qualidade e a excelência foi reconhecido com importantes premiações. Dentre os
+destaques, a companhia conquistou o ouro no Prêmio Smart Customer nas categorias Relacionamento com
+Colaboradores e Respeito ao Cliente, além de prêmios na ABEMD e ABT, evidenciando a dedicação ao
+atendimento e à satisfação do cliente. Além disso, a Alares foi, pela 9ª vez, reconhecida como a marca mais
+lembradanacategoriaProvedor deInternetnoPrêmioTopNatal.
+Pessoas são os principais ativos da Alares e portanto diversas iniciativas foram implementadas para valorizar e
+desenvolver colaboradores. A meta de adesão ao projeto de Visita a (iniciativa que incentiva a
+liderança a vivenciar o dia a dia de vendas, atendimento de call center e atendimento de campo) foi atingida em
+80%, e o programa "Jeito Alares de Atender" formou 40 turmas, garantindo padronização e capacidade de
+executar o melhor atendimento técnico em todas as regiões. O segundo ciclo do programa "Alares Reconhece"
+reforçou a valorização dos talentos internos. O indicador de satisfação dos colaboradores (eNPS) evoluiu de
+55%para 71%defavorabilidade, refletindoumambientede trabalhocadavezmaispositivo emotivador.
+Mantendo seu compromisso com o aprimoramento de práticas sustentáveis, a Alares deu continuidade a
+iniciativas como os projetos "Beach Clean", "Escola Conectada" e "ELAS na Técnica", promovendo impacto
+positivo nas comunidades onde está inserida. Com a iniciativa Escola Conectada, por exemplo, a Alares já
+impactou mais de cinco mil alunos. A redução da emissão de gases de efeito estufa também foi foco da
+empresa, atingindo 76% do abastecimento da frota de veículos com etanol. Os valores e cultura da companhia
+são constantemente afirmados e disseminados, especialmente nos de que criam momentos
+de aproximaçãoediálogo comoscolaboradores.
+A Alares segue comprometida com o crescimento sustentável. Os resultados alcançados em 2024 demonstram
+a força e a determinação da companhia em continuar sua trajetória de sucesso, sempre com foco em
+crescimento,rentabilidade, qualidadena satisfaçãode seusclientes ecolaboradores.
+3 | Release de Resultados 4T24
+
+--- PAGE 6 ---
+Desempenho Financeiro
+Receita Líquida
+A receita líquida no 4T24 foi de R$ 222,7 milhões, com crescimento de 29.4% na comparação
+com o 4T23. No ano de 2024, a receita líquida atingiu R$ 753,6 milhões, registrando
+crescimento de 32,7% em comparação ao ano de 2023. Esse importante crescimento aconteceu
+tanto por conta das bem sucedidas aquisições Webby e Azza quanto pela aceleração do
+crescimento orgânico.
+Receita Operacional Líquida
+4T24 4T23 % A/A 2024 2023 % A/A
+(R$ Milhões)
+Receita Bruta 251,7 196,0 28,4% 850,1 657,8 29,2%
+(-) Impostos e Deduções (29,0) (23,9) 21,0% (96,5) (89,9) 7,3%
+Receita Líquida 222,7 172,1 29,4% 753,6 567,9 32,7%
+(-) Custos dos serviços prestados (103,9) (82,9) 25,3% (361,1) (312,3) 15,6%
+Lucro Bruto 118,8 89,1 33,3% 392,5 255,6 53,6%
+Margem Bruta (%) 53,4% 51,8% 1.6p.p 52,1% 45,0% 7.1p.p
+EBITDA
+No 4T24, a Companhia registrou R$ 96,9 milhões de EBITDA, apresentando o crescimento
+expressivo de 164% em relação ao 4T23. No ano de 2024, o EBITDA atingiu R$ 338,8 milhões,
+registrando crescimento de 78%. A margem EBITDA totalizou 43,5% no trimestre, com
+incremento de 22.2p.p. comparado às margens apuradas no 4T23 e de 11.5p.p. comparado a
+2023. Crescimento significativo, que se deu pela maior alavancagem operacional da companhia
+e por ganhos de eficiência em diversas linhas de despesas. Os ganhos de eficiência são
+decorrentes de diversos projetos e em especial da alta capacidade da Alares de bem integrar as
+suas aquisições.
+EBITDA
+4T24 4T23 % A/A 2024 2023 % A/A
+(R$ Milhões)
+Lucro (Prejuízo) Líquido (12,8) (70,3) -81,8% (100,5) (157,4) -36,1%
+Resultado financeiro 66,8 42,4 57,3% 209,5 132,4 58,3%
+IR/CS (27,4) 8,1 -439,8% (14,6) 13,3 -209,6%
+Depreciação e Amortização 70,3 56,5 24,6% 244,3 201,9 21,0%
+EBITDA(1) 96,9 36,7 164,1% 338,8 190,2 78,1%
+Margem EBITDA (%) 43,5% 21,3% 22,2% 45,0% 33,5% 11,5%
+Despesas não recorrentes(3) - (37,9) - - (30,0) -
+EBITDA Ajustado (2) 96,9 74,6 29,8% 338,8 220,2 53,8%
+Margem EBITDA Ajustado (%) 43,5% 43,3% 0.1p.p. 45,0% 38,8% 6.2p.p.
+(1) EBITDAcalculadoconformeResoluçãoCVMnº156/2022(somadolucroouprejuízolíquido,resultadofinanceiro,impostosedepreciação).
+(2) EBITDAAjustadoparaexcluiritensnãorecorrentesquenãodevemserconsideradosnocálculodegeraçãocorrentedecaixaoperacional.
+(3) 4T23foiafetadopordespesanãorecorrente, decorrentederegularizaçõesfiscais,comadesãodaAlaresaoprogramaREFISnoEstado
+do RN. Do montante total, R$ 8,9 milhões refere-se à competência do exercício de 2023 e R$ 30,0 milhões de exercícios anteriores.
+Adicionalmente, no 4T23 a Companhia aderiu ao regime especial do ICMS no Estado do RN, que propiciará uma redução da carga
+tributáriaemcercadeR$10milhõesporano.
+4 | Release de Resultados 4T24
+
+--- PAGE 7 ---
+Desempenho Financeiro
+Depreciação e Amortização
+A depreciação e amortização registrada no 4T24 foi de R$ 70,3 milhões apresentando uma
+variação de 24,6% na comparação com o 4T23. No ano de 2024 foi registrado R$ 244,3
+milhões com variação de 21,0% em comparação a 2023. Este aumento decorre
+principalmente da aquisição da Azza (R$ 13,1 milhões adicionados).
+Depreciação e Amortização
+4T24 4T23 % A/A 2024 2023 % A/A
+(R$ Milhões)
+Depreciação e Amortização 70,3 56,5 24,6% 244,3 201,9 21,0%
+Resultado Financeiro
+O resultado financeiro foi negativo em R$ 66,8 milhões no 4T24 e R$ 209,5 milhões em 2024.
+Esse resultado é decorrente do aumento de despesas financeiras, reflexo principalmente da
+incorporaçãode novas dívidas relacionadas às mais recentes aquisições.
+Resultado Financeiro
+4T24 4T23 % A/A 2024 2023 % A/A
+(R$ Milhões)
+(+) Receitas financeiras 4,7 3,3 40,9% 17,0 16,2 4,6%
+(-) Despesas financeiras (71,4) (45,7) 56,2% (226,5) (148,6) 52,4%
+Resultado Financeiro Líquido (66,8) (42,4) 57,3% (209,5) (132,4) 58,3%
+Lucro (Prejuízo) Líquido
+No 4T24 a Companhia registrou R$ 12,8 milhões de prejuízo, registrando uma redução de
+81,8% em relação ao 4T23. Em 2024 registrou R$ 100,5 milhões, com uma redução de
+36,1% em relação a 2023. A melhora do resultado operacional tem permitido uma consistente
+tendência de reduçãodos prejuízos.
+Resultado Financeiro e Lucro Líquido
+4T24 4T23 % A/A 2024 2023 % A/A
+(R$MM)
+Resultado antes do resultado financeiro e
+26,5 (19,8) 34,0% 94,5 (11,7) -906,8%
+impostos
+Receitas financeiras 4,7 3,3 40,9% 17,0 16,2 4,6%
+Despesas financeiras (71,4) (45,7) 56,2% (226,5) (148,6) 52,4%
+Imposto de renda e contribuição social
+(0,8) (3,0) -127,1% (5,8) (4,5) 28,1%
+correntes
+Imposto de renda e contribuição social
+28,3 (5,0) -661,9% 20,4 (8,8) -331,9%
+diferidos(4)
+Lucro (Prejuízo) Líquido (12,8) (70,3) -81,8% (100,5) (157,4) -36,1%
+Margem líquida -5,8% -40,9% 35,1p.p. -13,3% -27,7% 14,4p.p.
+(4)Osvaloresde2024referem-sesubstancialmenteaativofiscaldiferidosobreprovisõesdecontingências,constituídoemdecorrênciade
+acordorealizadoentreaCompanhiaeosantigosacionistas,conformenotaexplicativan°28(b)(ii)dasdemonstraçõesfinanceiras.
+5 | Release de Resultados 4T24
+
+--- PAGE 8 ---
+Desempenho Financeiro
+Liquidez e Endividamento
+No final do quarto trimestre de 2024, a Alares registrou uma dívida líquida de R$ 1.136,8 milhões,
+composta por debêntures, empréstimos bancários, instrumentos financeiros derivativos,
+aquisições a pagar e caixa líquido. Uma reduçãode 25,5% na Dívida Líquida/Ebitda (6).
+Liquidez e Endividamento
+2024 2023 % A/A
+(R$ MM)
+Caixa e Equivalentes de Caixa 240,1 163,7 46,6%
+Aplicações Financeiras restritas 5,6 - -
+Empréstimos, Debêntures e Instrumentos Financeiros Derivativos (5) (1.116,7) (954,5) 17,0%
+Obrigações com Controladas e Aquisições de Ativos (265,8) (190,6) 39,5%
+Dívida Bruta 1.382,5 1.145,0 20,7%
+Dívida Líquida 1.136,8 981,3 15,8%
+EBITDA ajustado LTM (6) 369,6 237,8 55,4%
+Dívida Líquida/EBITDA Ajustado LTM (7) 3.08x 4.13x -25,5%
+(5)EmpréstimoseDebentures:liquidodocustodecaptação
+(6)EBITDAexcluindoIFRS-16deacordocomascláusulascontratuaisdecovenants
+(7)Racionaldocálculo:DívidaLíquidaAjustadaparafinsdecovenant/EBITDAexcluindoIFRS-16parafinsdecovenant.
+LTM=Lasttwelvemonths(últimosdozemeses).
+Capex
+A Alares investiu R$ 207,7 milhões em Capex em 2024, valor que 7,6% maior em relação a
+2023 e é reflexo do crescimento das operações da Companhia, expansões pontuais de rede,
+melhorias em infraestrutura e desenvolvimentos de sistemas. A companhia atingiu EBITDA-
+Capex de R$ 131,1 milhões, aumento de R$ 134,0 milhões em relação ao ano anterior. Esse
+desempenho só foi possível devido ao aprimoramento de controles e processos, incluindo uma
+gestão de estoques mais precisa, recuperação de equipamentos mais eficiente e maior
+efetividade na gestão de fornecedores.
+6 | Release de Resultados 4T24
+
+--- PAGE 9 ---
+Anexo I
+Balanço Patrimonial - Consolidado
+Ativos 31/12/2024 31/12/2023
+Caixa e equivalentes de caixa 240.056 163.634
+Aplicação financeira 1.146 310
+Contas a receber de clientes 94.879 83.109
+Estoques 19 18
+Tributos a recuperar 14.854 16.427
+Imposto de renda e contribuição social 6.190 6.389
+Despesas antecipadas 15.745 8.664
+Instrumentos financeiros derivativos 1.406 -
+Outros ativos 10.646 11.083
+Total do ativo circulante 384.941 289.634
+Aplicações financeiras 13.991 278.835
+Ativo fiscal diferido 3.693 468
+Depósitos judiciais 19.172 12.361
+Tributos a recuperar 17.696 23.148
+Despesas antecipadas 22.049 9.292
+Outros ativos 3.483 5.117
+Imobilizado 853.905 720.367
+Direito de uso 16.335 15.657
+Intangível 1.008.737 781.038
+Total do ativo não circulante 1.959.061 1.846.283
+Total do ativo 2.344.002 2.135.917
+Passivos 31/12/2024 31/12/2023
+Fornecedores e outras contas a pagar 107.337 78.559
+Empréstimos e financiamentos 53.230 31.847
+Debêntures 11.148 163.801
+Arrendamentos 11.480 6.809
+Obrigações trabalhistas e sociais 49.353 38.407
+Obrigações tributárias 10.108 52.042
+Imposto de renda e contribuição social a recolher 783 2.223
+Parcelamentos tributários 42.967 20.466
+Obrigação com aquisição de controladas 82.352 44.280
+Instrumentos financeiros derivativos 607 -
+Outras obrigações 6.666 7.079
+Total do passivo circulante 376.031 445.513
+Fornecedores e outras contas a pagar 29.208 12.428
+Empréstimos e financiamentos 297.508 199.191
+Debêntures 694.276 531.764
+Arrendamentos 3.874 5.550
+Passivo fiscal diferido 8.206 25.338
+Obrigações tributárias 11.009 12.282
+Parcelamentos tributários 80.449 42.943
+Obrigação com aquisição de controladas 183.503 396.125
+Instrumentos financeiros derivativos 13.262 -
+Provisão para contingências 127.070 4.661
+Total do passivo não circulante 1.448.365 1.230.282
+Patrimônio líquido
+Capital social 924.672 764.672
+Ajuste de avaliação patrimonial (35.752) (35.752)
+Reserva de capital 51.719 51.719
+Prejuízos acumulados (421.033) (320.517)
+Total do patrimônio líquido 519.606 460.122
+Total do passivo e patrimônio líquido 2.344.002 2.135.917
+7 | Release de Resultados 4T24
+
+--- PAGE 10 ---
+Anexo II
+Demonstração de Resultado - Consolidado
+Demonstrações do Resultado 4T24 4T23 % A/A 2024 2023 % A/A
+Receita operacional líquida 222.699 172.077 29,4% 753.596 567.852 32,7%
+Custo dos serviços prestados (103.881) (82.938) 25,3% (361.142) (312.274) 15,6%
+Lucro bruto 118.818 89.139 33,3% 392.454 255.578 53,6%
+Receitas (despesas) operacionais
+Despesas comerciais (19.272) (13.478) 43,0% (66.617) (50.141) 32,9%
+Despesas administrativas e gerais (84.430) (64.169) 31,6% (253.708) (206.574) 22,8%
+Outras receitas (despesas) líquidas 11.397 (31.280) -136,4% 22.327 (10.571) -311,2%
+Total de receitas (despesas) operacionais (92.305) (108.927) -15,3% (297.998) (267.286) 11,5%
+Lucro (Prejuízo) antes do resultado
+26.513 (19.788) -234,0% 94.456 (11.708) -906,8%
+financeiro e impostos
+Receitas financeiras 4.665 3.312 40,9% 16.975 16.235 4,6%
+Despesas financeiras (71.436) (45.748) 56,2% (226.515) (148.595) 52,4%
+Resultado financeiro líquido (66.771) (42.436) 57,3% (209.540) (132.360) 58,3%
+Prejuízo antes do imposto de renda e
+(40.258) (62.224) -35,3% (115.084) (144.068) -20,1%
+contribuição social
+Imposto de renda e contribuição social
+(0.824) (3.045) -72,9% (5.789) (4.519) 28,1%
+correntes
+Imposto de renda e contribuição social
+28.267 (5.031) -661,9% 20.357 (8.779) -331,9%
+diferidos
+Lucro (Prejuízo) Líquido (12.815) (70.300) -81,8% (100.516) (157.366) -36,1%
+Resultado atribuído aos:
+Acionistas controladores (12.815) (69.902) (100.516) (157.764)
+Acionistas não controladores - 398 - 398
+8 | Release de Resultados 4T24
+
+--- PAGE 11 ---
+Sobre a Alares S.A.
+A Alares, operadora independente de serviços de telecomunicações sediada em São Paulo,
+fornece serviços de internet via fibra óptica, TV por assinatura, streaming e telefonia fixa.
+Reúne aproximadamente 2.600 colaboradores e atua em 228 cidades de sete Estados
+brasileiros São Paulo, Paraná, Minas Gerais, Rio Grande do Norte, Paraíba, Ceará e Bahia.
+Tem uma rede de mais de 31 mil km de fibra óptica de alta qualidade, com cobertura de 3,2
+milhões de Homes Passed, atendendo mais de 793.000 clientes.
+Aviso Legal
+Algumas afirmações contidas neste documento podem ser afirmações sobre expectativas
+futuras. Tais afirmações estão sujeitas a riscos conhecidos e desconhecidos e incertezas que
+podem fazer com que tais expectativas não se concretizem ou sejam substancialmente
+diferentes do que era esperado. Estes riscos incluem, entre outros, modificações na demanda
+futura pelos produtos da Companhia, modificações nos fatores que afetam os preços
+domésticos e internacionais dos produtos, mudanças na estrutura de custos, modificações na
+sazonalidade dos mercados, mudanças nos preços praticados pelos concorrentes, variações
+cambiais, mudanças no cenário político econômico brasileiro, nos mercados emergentes e
+internacional. As afirmações sobre expectativas futuras não foram revisadas pelos auditores
+independentes.
+Relações com
+Investidores
+ri@alaresinternet.com.br
+ri.alaresinternet.com.br
+9 | Release de Resultados 4T24
+
+--- PAGE 20 ---
+Triple Play Brasil Participações S.A.
+Balanços patrimoniais
+31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+Nota 31/12/2024 31/12/2023 31/12/2024 31/12/2023
+Ativos
+Caixa e equivalentes de caixa 11 206.646 148.111 240.056 163.634
+Aplicação financeira 12 - - 1.146 310
+Contas a receber de clientes 13 - - 94.879 83.109
+Estoques - - 19 18
+Tributos a recuperar 14 - - 14.854 16.427
+Imposto de renda e contribuição social
+a recuperar 31(a) 2.853 257 6.190 6.389
+Despesas antecipadas 1.158 - 15.745 8.664
+Partes relacionadas 16 9.922 3.713 - -
+Instrumentos financeiros derivativos 30(c) - - 1.406 -
+Outros ativos 54 55 10.646 11.083
+Total do ativo circulante 220.633 152.136 384.941 289.634
+Aplicação financeira 12 - 261.503 13.991 278.835
+Ativo fiscal diferido 27 3.693 468 3.693 468
+Depósitos judiciais 15 - - 19.172 12.361
+Tributos a recuperar 14 - - 17.696 23.148
+Despesas antecipadas - - 22.049 9.292
+Partes relacionadas 16 136 153 - -
+Outros ativos 60 4.401 3.483 5.117
+Investimentos 17 1.249.850 1.151.258 - -
+Imobilizado 18 2.961 1.352 853.905 720.367
+Direito de uso 948 701 16.335 15.657
+Intangível 19 141 159 1.008.737 781.038
+Total do ativo não circulante 1.257.789 1.419.995 1.959.061 1.846.283
+Total do ativo 1.478.422 1.572.131 2.344.002 2.135.917
+24
+
+--- PAGE 22 ---
+Triple Play Brasil Participações S.A.
+Demonstrações dos resultados
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Receita operacional líquida 32 - - 753.596 567.852
+Custo dos serviços prestados 33 - - (361.142) (312.274)
+Lucro bruto - - 392.454 255.578
+Receitas (despesas) operacionais
+Despesas comerciais 34 - (276) (66.617) (50.141)
+Despesas administrativas e gerais 35 (8.583) (9.272) (253.708) (206.574)
+Resultado de equivalência patrimonial 17 (99.205) (164.076) - -
+Outras receitas (despesas) líquidas 36 129.992 109.351 22.327 (10.571)
+Total de receitas (despesas) operacionais 22.204 (64.273) (297.998) (267.286)
+Lucro (prejuízo) antes do resultado financeiro e
+impostos 22.204 (64.273) 94.456 (11.708)
+Receitas financeiras 1.627 434 16.975 16.235
+Despesas financeiras (127.571) (94.393) (226.515) (148.595)
+Resultado financeiro líquido 37 (125.944) (93.959) (209.540) (132.360)
+Prejuízo antes do imposto de renda e
+contribuição social (103.740) (158.232) (115.084) (144.068)
+Imposto de renda e contribuição social correntes 31(c) - - (5.789) (4.519)
+Imposto de renda e contribuição social diferidos 31(c) 3.224 468 20.357 (8.779)
+Prejuízo do exercício (100.516) (157.764) (100.516) (157.366)
+Resultado atribuído aos:
+Acionistas controladores (100.516) (157.764)
+Acionistas não controladores - 398
+Resultado por ação
+Resultado por ação - básico e diluído (em R$) 29(c) (0,34) (0,68)
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+26
+
+--- PAGE 23 ---
+Triple Play Brasil Participações S.A.
+Demonstrações dos resultados abrangentes
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+2024 2023 2024 2023
+Prejuízo do exercício (100.516) (157.764) (100.516) (157.366)
+Outros resultados abrangentes - - - -
+Resultado abrangente total (100.516) (157.764) (100.516) (157.366)
+Resultado abrangente atribuível aos:
+Acionistas controladores (100.516) (157.764)
+Acionistas não controladores - 398
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+27
+
+--- PAGE 25 ---
+Triple Play Brasil Participações S.A.
+Demonstrações dos fluxos de caixa
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Fluxos de caixa das atividades operacionais
+Prejuízo do exercício (100.516) (157.764) (100.516) (157.366)
+Ajustes para:
+Depreciação de imobilizado 18 135 36 188.678 162.584
+Amortização de intangível 19 32 409 46.712 35.266
+Depreciação de direito de uso 396 193 8.935 4.081
+Valor residual do imobilizado baixados 18 - - 144 2.410
+Resultado da equivalência patrimonial 17 99.205 164.076 - -
+Imposto de renda e contribuição social correntes e
+diferidos 31(c) (3.224) (468) (14.568) 13.298
+(Reversão) provisão para contingências 28 - - (296) 2.132
+Provisão para redução de valor recuperável de contas a
+receber 13 - - 25.601 23.669
+Juros sobre empréstimos e financiamentos 21 19.743 59 31.591 12.089
+Juros e atualização monetária de passivo de arrendamento 89 65 1.358 529
+Juros sobre parcelamento tributários 372 - 12.702 4.100
+Juros sobre obrigações com aquisição de
+controladas/ativos 26 - 1.127 20.350 13.195
+Juros sobre debêntures 22 84.873 88.044 84.873 88.044
+Apropriação de despesas antecipadas com comissão - - 3.295 5.099
+Apropriação custos com captação de empréstimos 21 630 - 2.761 184
+Apropriação custos com captação de debêntures 22 7.486 4.351 7.486 4.351
+Rendimentos de aplicação financeira - - (713) (183)
+Perda com instrumentos financeiros derivativos 13.482 - 9.700 -
+Diferença de variação cambial, líquida 21 - - 11.197 (2.059)
+Outros 36(i) (133.452) (3.952) (12.851) 36.723
+(10.749) 96.176 326.439 248.146
+Variações nos ativos e passivos:
+Contas a receber de clientes - - (27.391) (27.231)
+Estoques - - (1) 164
+Tributos a recuperar (2.596) (123) 7.458 465
+Despesas antecipadas (1.158) 32 (15.490) (16.559)
+Outros ativos 4.342 (36) 2.380 (1.009)
+Depósitos judiciais - - (5.162) (568)
+Fornecedores e outras contas a pagar 821 (86) (21.330) (24.994)
+Obrigações trabalhistas e sociais 550 448 3.674 4.772
+Obrigações tributárias (52) (845) (29.969) (1.804)
+Outras obrigações 339 (1.347) (378) (1.373)
+Caixa proveniente (utilizado nas) das atividades operacionais (8.503) 94.219 240.230 180.009
+Pagamento de juros sobre empréstimos e financiamentos 21 (19.651) - (26.836) (10.232)
+Pagamento de juros sobre arrendamentos (89) (65) (1.606) (788)
+Pagamento de juros de debêntures 22 (62.998) (59.342) (62.998) (59.342)
+Pagamento de juros sobre parcelamentos tributários (7) - (3.205) (1.635)
+Pagamento de juros sobre aquisição de controladas/ativos - (2.832) (6.844) (6.854)
+Pagamento de imposto de renda e contribuição social - - - (5.919)
+Caixa líquido (aplicado nas) proveniente das atividades (91.248) 138.741
+operacionais 31.980 95.239
+29
+
+--- PAGE 26 ---
+Triple Play Brasil Participações S.A.
+Demonstrações dos fluxos de caixa--Continuação
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+Nota 2024 2023 2024 2023
+Fluxo de caixa de atividades de investimento
+Aquisição de imobilizado 18 (1.744) (591) (185.725) (171.782)
+Aquisição de intangível 19 (14) (146) (21.939) (21.114)
+Aquisição de controlada, líquido do caixa 3.2 - - (89.187) (100.439)
+Aplicações financeiras - - (12.134) (6.031)
+Resgastes de aplicações financeiras 241.452 - 257.883 3.658
+Adiantamento para futuro aumento de capital, líquido 17 (197.797) (267.382) - -
+Caixa líquido (aplicado nas) proveniente das atividades de
+investimentos 41.897 (268.119) (51.102) (295.708)
+Fluxo de caixa de atividades de financiamento
+Pagamento de arrendamentos (375) (159) (11.080) (4.544)
+Pagamento de obrigação com aquisição de
+controladas/ativos (108.000) (10.698) (164.103) (42.226)
+Pagamento de parcelamentos tributários (67) - (30.722) (12.626)
+Adiantamento para futuro aumento de capital 160.000 217.620 160.000 217.620
+Pagamento de instrumentos derivativos financeiros, líquido (220) - 2.790 -
+Pagamento (recebimento) de mútuos com partes
+relacionadas, líquido (5.817) 24.490 - -
+Captação de debêntures, líquida de custos de transação 22 94.841 - 94.841 -
+Amortização de principal de debêntures 22 (114.343) (19.057) (114.343) (19.057)
+Custos de captação de debêntures 22 - (205) - (205)
+Captação de empréstimos e financiamentos, líquida de
+custos de transação 21 81.867 146.700 213.658 232.429
+Amortização de principal de empréstimos e financiamentos 21 - - (162.258) (86.720)
+Caixa líquido (aplicado nas) proveniente das atividades de
+financiamento 107.886 358.691 (11.217) 284.671
+Aumento (Redução) em caixa e equivalentes de caixa 58.535 122.552 76.422 84.202
+Caixa e equivalentes de caixa no início do exercício 148.111 25.559 163.634 79.432
+Caixa e equivalentes de caixa no fim doexercício 206.646 148.111 240.056 163.634
+Aumento (Redução) em caixa e equivalentes de caixa 58.535 122.552 76.422 84.202
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+30
+
+--- PAGE 27 ---
+Triple Play Brasil Participações S.A.
+Demonstrações do valor adicionado
+Exercícios findos em 31 de dezembro de 2024 e 2023
+(Valores expressos em milhares de reais)
+Controladora Consolidado
+2024 2023 2024 2023
+Receitas (1) 129.992 109.351 851.377 781.182
+Vendas de mercadorias, produtos e serviços - - 848.999 656.864
+Outras receitas 129.992 109.351 27.979 147.987
+Provisão para redução de valor recuperável de contas a receber - - (25.601) (23.669)
+Insumos adquiridos de terceiros (2) (4.014) (3.260) (226.155) (351.120)
+Custos dos produtos, das mercadorias e dos serviços vendidos - - (117.478) (100.369)
+Materiais, energia, serviços de terceiros e outros (4.014) (3.260) (108.677) (250.751)
+Valor adicionado bruto (1) - (2) = (3) 125.978 106.091 625.222 430.062
+Depreciação e amortização (4) (563) (638) (244.325) (201.931)
+Valor adicionado líquido produzido pela Companhia (3) - (4) = (5) 125.415 105.453 380.897 228.131
+Valor adicionado recebido em transferência (6) (97.578) (163.642) 16.975 16.235
+Resultado da equivalência patrimonial (99.205) (164.076) - -
+Receitas financeiras 1.627 434 16.975 16.235
+Valor adicionado total a distribuir (5+6) 27.837 (58.189) 397.872 244.366
+Distribuição do valoradicionado
+Pessoal 2.512 5.412 139.961 121.208
+Remuneração direta 2.195 5.213 101.718 90.552
+Benefícios 317 199 27.961 22.024
+F.G.T.S. - - 10.282 8.632
+Impostos, taxas e contribuições (1.778) (78) 123.864 124.874
+Federais (1.868) (157) 59.428 69.308
+Estaduais - - 62.028 53.232
+Municipais 90 79 2.408 2.334
+Remuneração de capitais de terceiros 127.619 94.241 234.563 155.650
+Juros 112.475 93.582 172.817 131.143
+Aluguéis 146 - 8.621 7.894
+Outras 14.998 659 53.125 16.613
+Remuneração de capitais próprios (100.516) (157.764) (100.516) (157.366)
+Prejuízo do exercício (100.516) (157.764) (100.516) (157.764)
+Participação de não controladores nos lucrosretidos - - - 398
+Valor adicionado distribuído 27.837 (58.189) 397.872 244.366
+As notas explicativas são parte integrante das demonstrações financeiras individuais e consolidadas.
+31
+
+--- PAGE 33 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Valor justo
+reconhecido na
+aquisição
+Azza
+Ativos
+Caixa e equivalentes de caixa 5.186
+Contas a receber de clientes 9.980
+Outros ativos 9.648
+Imobilizado 134.889
+Direito de uso 8.961
+Intangível 54.116
+Total dos ativos 222.780
+Passivos
+Fornecedores e outras contas a pagar 77.795
+Empréstimos e financiamentos 49.729
+Arrendamentos 9.990
+Obrigações trabalhistas e sociais 7.272
+Obrigações tributárias 60.765
+Outras obrigações 24.473
+Provisão para contingências 2.105
+Total dos passivos 232.129
+Total dos ativos identificáveis líquidos a valor justo (9.349)
+Ágio 197.443
+Total da Contraprestação 188.094
+Estima-se que os valores referentes ao ágio e mais valia serão dedutíveis para fins de
+imposto de renda e contribuição social. O valor representa a expectativa de
+rentabilidade futura, fundamentada nos benefícios esperados com a sinergia das
+operações da Companhia e de seu Grupo Econômico.
+O caixa líquido apresentado no fluxo de caixa da Companhia na aquisição é conforme a
+seguir apresentado:
+Saída de caixa líquida na aquisição:
+Contraprestação (parcela paga em caixa à vista) 94.373
+Saldo de caixa e equivalentes de caixa (5.186)
+Efeito líquido no fluxo de caixa da adquirente 89.187
+Desde a data da aquisição até 31 de dezembro de 2024, a Azza contribuiu para a
+Companhia com receitas líquidas consolidado de R$39.284 e prejuízo líquido
+consolidado de R$5.004. Caso a aquisição tivesse ocorrido em 1º de janeiro de 2024, a
+Companhia estima que as receitas líquidas consolidadas teriam sido de R$151.808 e o
+prejuízo líquido consolidado de R$21.646.
+37
+
+--- PAGE 52 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Para testes de redução ao valor recuperável, os ativos são agrupados em Unidades
+Geradoras de Caixa (UGCs), ou seja, o menor grupo possível de ativos que gera
+entradas de caixa por meio de seu uso contínuo, que são amplamente independentes
+das entradas. caixa de outros ativos ou UGCs. O ágio das combinações de negócios é
+alocado às UGCs ou grupos de UGCs que se beneficiam das sinergias da combinação.
+O valor recuperável ou UGC de um ativo é o valor mais alto em uso e o valor justo menos
+os custos de venda. O valor em uso é baseado nos fluxos de caixa futuros estimados,
+descontados a valor presente, utilizando uma taxa de desconto antes dos impostos, que
+reflete as avaliações atuais do mercado quanto ao valor do dinheiro vezes e os riscos
+específicos dos ativos ou UGC. Atuais de mercado do valor do dinheiro no tempo e os
+riscos específicos do ativo ou da UGC.
+Uma perda por redução ao valor recuperável é reconhecida se o valor contábil do ativo
+ou UGC exceder o seu valor recuperável. Não foram realizadas reduções ao valor
+recuperável de ativos nos exercícios findos em 31 de dezembro de 2024 e 2023.
+Perdas por redução ao valor recuperável são reconhecidas no resultado. Perdas por
+redução ao valor recuperável são revertidas somente na extensão em que o novo valor
+contábil do ativo não exceda o valor contábil que teria sido apurado, líquido de
+depreciação ou amortização, caso a perda de valor não tivesse sido reconhecida.
+m) Provisões
+As provisões são determinadas por meio do desconto dos fluxos de caixa futuros estimados a
+uma taxa antes de impostos que reflita as avaliações atuais de mercado quanto ao valor do
+dinheiro no tempo e riscos específicos para o passivo relacionado. Os efeitos do
+desreconhecimento do desconto pela passagem do tempo são reconhecidos no resultado
+como despesa financeira.
+Provisão para riscos cíveis, regulatórios, tributários e trabalhistas
+São constituídos levando-se em conta: a opinião dos assessores jurídicos, a natureza das
+ações, similaridade com processos anteriores da mesma complexidade e o posicionamento
+dos tribunais, sempre que a perda for avaliada como provável, o que ocasionaria uma
+provável saída de recursos para a liquidação das obrigações e quando os montantes
+envolvidos forem mensuráveis com suficiente segurança. Os passivos contingentes
+classificados como de perdas possíveis não são reconhecidos contabilmente, porém são
+divulgados em notas explicativas, quando relevantes, os classificados como remotos não são
+reconhecidos nem divulgados.
+56
+
+--- PAGE 56 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+emissão das demonstrações contábeis intermediárias individuais e consolidadas, estão
+descritas a seguir:
+Efeito das mudanças nas taxas de câmbio e conversão de demonstrações contábeis
+(CPC 02/IAS 21).
+Apresentação e divulgação das Demonstrações Financeiras (IFRS 18);
+Subsidiárias sem Responsabilidade Pública: Divulgações (IFRS 19);
+Classificação e mensuração de instrumentos financeiros (CPC 48 / IFRS 9 e CPC 40 (R1) /
+IFRS 7);
+Pronunciamento Técnico CBPS n° 01 e 02 (IFRS S1 e IFRS S2): Divulgação de Informações
+Financeiras Relacionadas à Sustentabilidade;
+Resolução CVM nº 223 / OCPC 10: Créditos de Carbono (tCO2e), Permissões de emissão
+(allowances) e Crédito de Descarbonização (CBIO);
+CPC 18 (R3) / IAS 28 e CPC 36 (R3) / IFRS 10:
+Investimento em Coligada e em Empreendimento Controlado em Conjunto Correlação às
+Normas Internacionais de Contabilidade; e
+ICPC 09 (R3): Demonstrações Contábeis Individuais, Demonstrações Separadas,
+Demonstrações Consolidadas e Aplicação do Método da Equivalência Patrimonial.
+As alterações acima são válidas para períodos iniciados a partir de 1º de janeiro de 2025 e
+devem ser aplicadas retrospectivamente. A Companhia espera impactos substanciais na
+elaboração da Demonstração de Resultado e da Demonstração dos Fluxos de Caixa,
+originados pela aplicação da IFRS 18 e está analisando os possíveis impactos referentes a
+este pronunciamento em suas demonstrações financeiras. A Companhia aguardará a
+orientação do CPC para a aplicação deste pronunciamento. Para as demais normas, a
+Companhia concluiu que não haverá impactos materiais na aplicação dessas alterações na
+prática atual em suas demonstrações financeiras individuais e consolidadas.
+10. Segmentos operacionais
+Segmentos operacionais são definidos como componentes de um empreendimento para os quais
+informações contábeis separadas estão disponíveis e são avaliadas de forma regular pelo
+principal tomador de decisões operacionais na definição sobre como alocar recursos para um
+segmento individual e na avaliação do desempenho do segmento.
+Tendo em vista que: (i) todas as decisões dos administradores e gestores são tomadas com base
+em relatórios consolidados; (ii) a missão do Grupo e suas controladas é prover seus clientes de
+serviços de telecomunicações com qualidade; e (iii) todas as decisões relacionadas ao
+planejamento estratégico e financeiro, compras, investimentos e investimentos de fundos são
+tomadas de forma consolidada; a Administração concluiu que o Grupo e suas controladas operam
+em um único segmento operacional de prestação de serviços de telecomunicações. Toda a
+receita do Grupo é gerada no Brasil, bem como todos os ativos estão localizados no território
+nacional e não há cliente representando individualmente 10% ou mais da receita.
+60
+
+--- PAGE 57 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+11. Caixa e equivalentes de caixa
+Controladora Consolidado
+31/12/2024 31/12/2023 31/12/2024 31/12/2023
+Caixa - - 3 10
+Bancos (i) 860 1.323 12.636 10.324
+Aplicação financeira (ii) 205.786 146.788 227.417 153.300
+Total 206.646 148.111 240.056 163.634
+(i) O saldo em bancos corresponde aos valores disponíveis para uso imediato.
+(ii) Correspondem a aplicações financeiras em Certificados de Depósito Bancário (“CDB”) emitidos por instituições financeiras, cuja
+rentabilidade média acumulada no exercício findo em 31 de dezembro de 2024 e 2023 foi de 4,94% a.a. e 5,49% a.a.,
+respectivamente. Essas aplicações financeiras classificadas como equivalentes de caixa, estão representadas por investimentos
+de curto prazo e possuem risco insignificante de perda de valor. O aumento no saldo em aplicações financeiras decorre conforme
+explicado na nota explicativa n° 12(i).
+12. Aplicações financeiras
+Controladora Consolidado
+31/12/2024 31/12/2023 31/12/2024 31/12/2023
+Garantiaescrow (i) - 261.503 8.759 268.950
+Aplicações financeiras restritas (ii) - - 5.638 -
+Outras aplicações financeiras - - 740 10.195
+Total - 261.503 15.137 279.145
+Circulante - - 1.146 310
+Não circulante - 261.503 13.991 278.835
+(i) Essas aplicações referem-se a depósitos em conta garantia (“Escrow account”) das aquisições de controladas (Nota explicativa
+nº 26).
+A aplicação financeira no valor de R$8.759 corresponde a cotas de fundos de investimento sem vencimento mantidos pela
+controlada Cabo. A rentabilidade média acumulada dos fundos de investimento para o exercício findo em 31 de dezembro de 2024
+foi de 23,19% a.a. (negativo de 2,51% a.a. em 31 de dezembro de 2023).
+Em dezembro de 2024, a Companhia assinou um termo aditivo de acordo com a Acon Investments (acionista anterior da
+Companhia) para a liberação do saldo em conta garantia, no montante total de R$241.452, na qual, o montante de R$108.000
+fosse liberado em favor ao vendedor, e o restante, liberado a favor da Companhia. O valor resgatado em favor à Companhia, estão
+registrados conforme apresentado na nota explicativa n° 11(ii).
+(ii) O valor restrito representado nas aplicações financeiras é aplicado em operações de renda variável, indexada à variação do CDI.
+Esta aplicação financeira consiste em garantias de empréstimos e financiamentos.
+61
+
+--- PAGE 61 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+17. Investimentos
+a) Composição
+Os investimentos em controladas, apresentados nas demonstrações financeiras individuais da Controladora, é como segue:
+Capital social e
+Adiantamento para
+futuro aumento de Percentual de Resultado de
+capital Patrimônio líquido participação Resultado do período equivalência patrimonial Ágio/Mais valia Investimento
+Controladas Diretas 31/12/2024 31/12/2023 31/12/2024 31/12/2023 31/12/2024 31/12/2023 31/12/2024 31/12/2023 31/12/2024 31/12/2023 31/12/2024 31/12/2023 31/12/2024 31/12/2023
+Cabo 385.257 565.851 763.783 505.789 99,99% 99,99% (42.050) (136.678) (42.046) (136.664) - - 763.706 505.737
+Videomar (i) 459.689 599.473 408.496 540.673 100,00% 100,00% (36.044) (30.437) (36.044) (30.437) - - 408.496 540.673
+Tecnet 14.218 69.018 27.525 53.567 100,00% 100,00% (22.571) 2.769 (22.571) 2.769 50.123 50.123 77.648 103.690
+Webby Participações (i) - 86.613 - 11.589 10,00% 10,00% 14.557 2.561 1.456 256 - - - 1.158
+Total (86.108) (161.785) (99.205) (164.076) 50.123 50.123 1.249.850 1.151.258
+(i) Em 1° de julho de 2024, houve a incorporação da Webby Participações e a cisão parcial da Videomar, onde ativos e passivos foram incorporados na Cabo. Vide nota explicativa nº 4 “Reestruturação Societária”.
+65
+
+--- PAGE 81 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+c) Processos cíveis, regulatórios, tributários e trabalhistas com possíveis chances de perda
+O Grupo discute outras ações para as quais a estimativa dos assessores jurídicos é de
+perdas possíveis. Para essas ações, não foi constituída provisão contábil para fazer face às
+eventuais perdas, tendo em vista que as Controladas consideram ter embasamento jurídico
+que fundamente os procedimentos adotados para a defesa.
+Consolidado
+31/12/2024 31/12/2023
+Causascom prognósticode perda possível-Natureza:
+Cíveis 10.608 1.151
+Regulatórios 4.346 23.102
+Tributárias 6.617 49.627
+Trabalhistas 8.827 6.477
+Total 30.398 80.357
+29. Patrimônio líquido
+a) Capital social
+O capital social da Companhia, em 30 de dezembro de 2024 é de R$924.672 representado
+por 347.699.058 ações ordinárias, nominativas, escriturais e sem valor nominal.
+Em 09 de dezembro de 2024, foi aprovado o aumento de capital de R$160.000, com
+emissão de 56.439.243 novas ações ordinárias.
+b) Adiantamento para futuro aumento de capital
+Em 17 de setembro de 2024, foi recebido pela Condor Fundo de Investimento em
+Participações Multiestratégia - investimento no exterior o montante de R$160.000 referente
+adiantamento para futuro aumento de capital social, integralizado em 09 de dezembro de
+2024.
+c) Resultado por ação
+O resultado básico por ação é calculado mediante a divisão do lucro atribuível aos acionistas
+da Companhia pela quantidade média ponderada das ações ordinárias em circulação no
+período. O resultado por ação diluído é calculado ajustando-se à média ponderada da
+quantidade de ações ordinárias em circulação supondo a conversão de todas as ações
+ordinárias potenciais que provocariam diluição. A Companhia não detém instrumentos com
+potencial dilutivo em 31 de dezembro de 2024 e 2023.
+85
+
+--- PAGE 82 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Resultado por ação-
+básico ediluído
+31/12/2024 31/12/2023
+Prejuízo do exercício: (100.516) (157.764)
+Média ponderada de ações ordinárias em circulação (milhares) 294.652 230.611
+Prejuízo por ação (em Reais) - básico: (0,34) (0,68)
+Prejuízo por ação (em Reais) - diluído: (0,34) (0,68)
+30. Instrumentos financeiros
+i) Classificação contábil e valores justos
+A tabela a seguir apresenta os valores contábeis e os valores justos dos ativos e passivos
+financeiros, incluindo os seus níveis na hierarquia do valor justo, nos exercícios findos em
+31 de dezembro de 2024 e 2023.
+Consolidado
+Hierarquia 31/12/2024 31/12/2023
+de valor Valor Valor Valor Valor
+justo contábil justo contábil justo
+Ativo
+Aplicações financeiras (Garantia
+escrow) 2 8.759 8.759 268.950 268.950
+Aplicações financeiras (Outras
+aplicações financeiras) 2 6.378 6.378 10.195 10.195
+Contas a Receber 2 94.879 94.879 83.109 83.109
+Instrumentos financeiros derivativos 2 1.406 1.406 - -
+111.422 111.422 362.254 362.254
+Passivo
+Empréstimos e financiamentos 2 350.738 350.738 231.038 231.038
+Debêntures 2 705.424 705.424 695.565 695.565
+Arrendamentos 2 15.354 15.354 12.359 12.359
+Obrigação com aquisição de
+controladas 2 265.855 265.855 440.405 440.405
+Instrumentos financeiras derivativos 2 13.869 13.869 - -
+1.351.240 1.351.240 1.379.367 1.379.367
+A Companhia não possui instrumentos financeiros a valor justo por meio de outros
+resultados abrangentes.
+Ao mensurar o valor justo de um ativo ou passivo, o Grupo usa dados observáveis de
+mercado, tanto quanto possível. Os valores justos são classificados em diferentes níveis em
+uma hierarquia baseada nas informações (inputs), que são utilizadas nas técnicas de
+avaliação.
+86
+
+--- PAGE 84 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Os índices de endividamento consolidado sobre o patrimônio líquido do Grupo são
+compostos conforme a seguir apresentado:
+Consolidado
+Saldocontábil Saldo contábil
+em 31/12/2024 em 31/12/2023
+Caixa e equivalentes de caixa 240.056 163.634
+Aplicações financeiras 15.137 279.145
+Empréstimos e financiamentos(*) (350.738) (231.038)
+Debêntures (*) (705.424) (695.565)
+Obrigação com aquisição de controladas (265.855) (440.405)
+Instrumentos financeiros derivativos, líquido (12.463) -
+Endividamento (1.079.287) (924.229)
+Patrimônio líquido 519.606 460.122
+Índicede endividamento 207,71% 200,87%
+(*) Considera o custo de captação de empréstimos e financiamentos e debêntures no montante de R$7.152 e R$40.965,
+respectivamente (notas explicativas nº 21 e 22, respectivamente).
+iii) Gerenciamento dos riscos financeiros
+O Grupo possui exposição para os seguintes riscos resultantes de instrumentos financeiros:
+Risco de crédito;
+Risco de liquidez; e
+Risco de mercado.
+A Administração do Grupo tem a responsabilidade sobre o estabelecimento e supervisão da
+estrutura de gerenciamento de risco da Companhia e suas controladas. É também
+responsável pelo desenvolvimento e acompanhamento das políticas de gerenciamento de
+risco do Grupo.
+As políticas de gerenciamento de risco do Grupo são estabelecidas para identificar e analisar
+os riscos aos quais a Companhia e suas controladas está exposto, para definir limites de
+riscos e controles apropriados, e para monitorar os riscos e a aderência aos limites definidos.
+As políticas de gerenciamento de risco e os sistemas são revisados regularmente para
+refletir mudanças nas condições de mercado e nas atividades da Companhia e suas
+controladas.
+No exercício findo em 31 de dezembro de 2024 não houve mudança nas políticas de
+gerenciamento de riscos financeiros.
+88
+
+--- PAGE 86 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+As perdas por redução ao valor recuperável sobre os ativos financeiros foram as
+seguintes:
+Consolidado
+31/12/2024 31/12/2023
+Constituição de provisão para perda por redução ao valor recuperável de contas a
+receber (Nota explicativa nº 13) (25.601) (23.669)
+Caixa e equivalentes de caixa
+O Grupo detinha ‘Caixa e equivalentes de caixa’ de R$240.056 em 31 de dezembro de
+2024 (R$163.634 em 31 de dezembro de 2023). O ‘Caixa e equivalentes de caixa’ são
+mantidos com bancos e instituições financeiras de primeira linha.
+Aplicações financeiras
+A Administração do Grupo detinha aplicações financeiras de R$15.137 em 31 de
+dezembro de 2024 (R$279.145 em 31 de dezembro de 2023), ao qual são mantidos com
+bancos e instituições financeiras de primeira linha.
+Apresentamos os ratings publicados pelas agências Moody’s e S&P para as principais
+instituições financeiras com as quais a Companhia manteve operações em aberto em
+31 de dezembro de 2024:
+Ratings de longo prazo por contraparte Moody's S&P
+Banco Santander Ba1 BB-
+b) Risco de liquidez
+A seguir, apresentamos um sumário do perfil de vencimento dos passivos financeiros
+consolidados, que incluem os valores de principal e juros futuros até a data dos
+vencimentos. Para os passivos de taxa fixa, os juros foram calculados com base nos
+índices estabelecidos em cada contrato. Para os passivos de taxa variável, os juros
+foram calculados com base na previsão de mercado para cada período.
+Saldo em Consolidado
+31/12/2024 2025 2026 2027 2028 >2029 Total
+Fornecedores e outras contas a pagar 136.545 107.398 22.636 8.469 - - 138.503
+Empréstimos e financiamentos 350.738 92.545 98.270 110.617 94.474 93.821 489.727
+Debêntures 705.424 63.605 219.031 210.171 200.824 311.895 1.005.526
+Arrendamentos 15.354 7.678 6.279 1.367 203 88 15.615
+Parcelamentos de tributos 123.416 42.967 32.486 24.606 16.750 6.607 123.416
+Obrigações com aquisição de
+controladas (Sellers Note) 257.096 87.205 93.558 65.264 46.251 31.801 324.079
+Instrumentos financeiros derivativos 13.262 607 - - - 13.262 13.869
+Outras obrigações 6.666 6.666 - - - - 6.666
+Total 1.608.501 408.671 472.260 420.494 358.502 457.474 2.117.401
+90
+
+--- PAGE 89 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Mudanças nos passivos de atividades de financiamento
+As movimentações para o período findo em 31 de dezembro de 2024 dos passivos de atividades de financiamento da
+Companhia e suas controladas estão demonstrados a seguir:
+Controladora
+Transação não
+Ajuste de lucro
+caixa
+Encargos
+Fluxo de caixa das Fluxo de caixa financeiros e Perdas em
+Valor em atividades de das atividades atualizações Instrumentos Valor em
+31/12/2023 financiamentos de operacionais Transações Outros monetárias Financeiros Outros 31/12/2024
+Empréstimos e financiamentos 146.759 81.867 (19.651) - - 20.373 - - 229.348
+Debêntures 695.564 (19.502) (62.998) - - 92.360 - - 705.424
+Arrendamentos 743 (375) (89) 643 - 89 - - 1.011
+Parcelamentos tributários - (67) (7) 765 - 372 - - 1.063
+Obrigação com aquisição de controlada 261.603 (108.000) - (20.051) - - - (133.452) 100
+Mútuo com partes relacionadas 629 (5.817) - - 6.192 - - - 1.004
+Instrumentos financeiros derivativos - (220) - - - - 13.482 - 13.262
+Adiantamento para futuro aumento de
+capital - 160.000 - (160.000) - - - - -
+1.105.298 107.886 (82.745) (178.643) 6.192 113.194 13.482 (133.452) 951.212
+93
+
+--- PAGE 90 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+Mudanças nos passivos de atividades de financiamento -- Continuação
+Consolidado
+Transação não caixa Ajuste de lucro
+Fluxo de Encargos
+caixa das financeiros
+Fluxo de caixa atividades e Perdas em
+Valor em das atividades de de Combinação atualizações Instrumentos Valor
+31/12/2023 financiamentos operacionais de negócios Transações Outros monetárias Financeiros Outros 31/12/2024
+Fornecedores 90.987 (11.547) (21.820) 77.795 - - 1.130 - - 136.545
+Empréstimos e
+231.038 51.400 (26.836) 49.729 - - 45.407 - - 350.738
+financiamentos
+Debêntures 695.565 (19.502) (62.998) - - - 92.359 - - 705.424
+Arrendamentos 12.359 (11.080) (1.606) 9.990 4.353 - 1.358 - (20) 15.354
+Parcelamentos tributários 63.409 (30.722) (3.205) 56.711 24.521 - 12.702 - - 123.416
+Obrigação com aquisição
+440.405 (152.556) (6.354) 116.274 (17.824) - 19.362 - (133.452) 265.855
+de controlada
+Instrumentos financeiros
+- 2.790 - - - 1.379 - 9.700 - 13.869
+derivativos
+Adiantamento para futuro
+- 160.000 - - (160.000) - - - - -
+aumento de capital
+1.533.763 (11.217) (122.819) 310.499 (148.950) 1.379 172.318 9.700 (133.472) 1.611.201
+94
+
+--- PAGE 93 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+d) Reconciliação da alíquota efetiva
+Consolidado
+31/12/2024 31/12/2023
+Imposto de renda e contribuição social lucro real
+Resultado antes dos impostos (115.084) (144.068)
+Taxa nominal de imposto de renda e contribuição social 34% 39.129 48.983
+Adições e exclusões permanentes
+Incentivo fiscal (i) (5.033) 8.314
+Indenização (ii) - 41.062
+Outras adições/exclusões (iii) 44.097 1.630
+78.193 99.989
+Prejuízo fiscal e base negativa sem reconhecimento de ativo
+fiscal diferido (63.695) (111.397)
+Outros 70 (1.890)
+14.568 (13.298)
+Total Imposto de renda e contribuição social correntes (5.789) (4.519)
+Total imposto de renda e contribuição social diferidos 20.357 (8.779)
+14.568 (13.298)
+Taxa efetiva 12,66% -9,23%
+(i) As controladas Videomar e Cabo são beneficiárias de incentivos fiscais de redução de 75% do imposto de renda e
+adicionais não restituíveis, concedidos pela SUDENE, ambos pelo período de 10 anos, com vigências até 31/12/2033
+31/12/2034, respectivamente;
+(ii) Indenização referente a ativos indenizatórios reconhecidos no exercício, decorrente de despesas de períodos anteriores,
+cuja gestão era de responsabilidade dos vendedores;
+(iii) Exclusão em decorrência do acordo conforme nota explicativa n° 26(i).
+O Grupo não reconheceu ativos fiscais diferidos sobre prejuízos fiscais e base negativa de
+contribuição negativos acumulados no exercício findo em 31 de dezembro de 2024 e 2023,
+nos montantes de R$723.624 e R$534.474, respectivamente.
+De acordo com a legislação tributária brasileira, os prejuízos fiscais e base negativa de
+contribuição social não expiram, no entanto, seu uso é limitado a até 30% da receita
+tributável anual e não se beneficiam de nenhuma correção monetária de juros.
+97
+
+--- PAGE 96 ---
+Triple Play Brasil Participações S.A.
+Notas explicativas às demonstrações financeiras individuais e consolidadas
+31 de dezembro de 2024
+(Em milhares de reais, exceto quando indicado de outra forma)
+37. Resultado financeiro líquido
+Controladora Consolidado
+31/12/2024 31/12/2023 31/12/2024 31/12/2023
+Receitas financeiras
+Juros ativos - - 7.435 3.256
+Descontos obtidos 1 - 294 722
+Juros de aplicação financeira 1.624 430 3.814 1.930
+Variação cambial positiva 2 - 66 4.959
+Receitas com instrumentos financeiros derivativos - - 4.416 -
+Outras receitas financeiras - 4 950 5.368
+1.627 434 16.975 16.235
+Despesas financeiras
+Multa de mora (21) (80) (1.654) (2.987)
+Variação cambial passiva - - (11.263) (2.900)
+Juros sobre empréstimos (19.743) (59) (31.591) (12.089)
+Juros sobre debêntures (84.873) (88.044) (84.873) (88.044)
+Juros sobre arrendamentos (89) (65) (1.358) (529)
+Despesas financeiras com instrumentos derivativos (13.482) - (14.116) -
+Apropriação de custos sobre empréstimos (630) - (2.761) (184)
+Apropriação de custos sobre debêntures (7.486) (4.351) (7.486) (4.351)
+Despesas bancárias (497) (310) (12.754) (7.854)
+Juros sobre parcelamentos (372) - (12.702) (4.100)
+Variação monetária passiva - (1.127) (20.350) (13.910)
+Descontos concedidos - - (14.987) (4.306)
+Outras despesas financeiras (378) (357) (10.620) (7.341)
+(127.571) (94.393) (226.515) (148.595)
+Total (125.944) (93.959) (209.540) (132.360)
+100
+

@@ -36,7 +36,7 @@ import requests
 SCRIPT_DIR = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING = PROJETO_RAIZ / "data" / "01_landing" / "cvm_raw"
-EMPRESAS_CSV = SCRIPT_DIR / "empresas_abertas.csv"
+EMPRESAS_CSV = SCRIPT_DIR / "empresas.csv"
 
 # Intervalo padrão de anos
 ANO_INICIO = 2018

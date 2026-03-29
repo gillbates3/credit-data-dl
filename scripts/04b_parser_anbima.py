@@ -5,17 +5,13 @@ Lê os JSONs brutos de 01_landing/anbima/{TICKER}/ produzidos pelo
 scraper (03_download_anbima.py) e faz upsert nas tabelas do Supabase:
 
   operacoes         ← caracteristicas.json
-  agenda_pagamentos ← agenda.json        (.content[])
-  pu_historico      ← grafico_pu.json    (.pus[])        — série completa de PU
-                    + pu_historico.json  (.content[])    — adiciona vna/juros
-                    + precos.json        (.precos[])      — adiciona taxas/duration
+  agenda_pagamentos ← agenda.json        
+  historico_diario  ← historico_diario.json
 
 Arquivos esperados por ticker em 01_landing/anbima/{TICKER}/:
   caracteristicas.json
   agenda.json
-  pu_historico.json
-  grafico_pu.json
-  precos.json
+  historico_diario.json
 
 Uso:
   python 04b_parser_anbima.py
@@ -23,7 +19,7 @@ Uso:
   python 04b_parser_anbima.py --dry-run
   python 04b_parser_anbima.py --apenas operacoes
   python 04b_parser_anbima.py --apenas agenda
-  python 04b_parser_anbima.py --apenas pu
+  python 04b_parser_anbima.py --apenas historico
 """
 
 import argparse
@@ -229,118 +225,49 @@ def parsear_agenda(ticker: str, cnpj: str, agenda_json: dict) -> list[dict]:
     return registros
 
 
-# ── Parser: pu_historico ──────────────────────────────────────────────────────
+# ── Parser: historico_diario ──────────────────────────────────────────────────
 
-def parsear_pu(
-    ticker: str,
-    grafico_json: dict | None,
-    pu_hist_json: dict | None,
-    precos_json: dict | None,
-) -> list[dict]:
+def parsear_historico_diario(ticker: str, historico_json: list | dict) -> list[dict]:
     """
-    Consolida três fontes numa série histórica única por data.
-
-    Fontes e campos que cada uma contribui:
-      grafico_pu.json   → pus[]:    pu_par (valor_pu_historico), pu_indicativo (valor_pu_indicativo)
-      pu_historico.json → content[]: pu_par, vna, juros, flag_status
-      precos.json       → precos[]:  taxa_indicativa, taxa_compra, taxa_venda,
-                                     duration, percentual_pu_par, desvio_padrao,
-                                     reune, intervalo_min/max, referencia_ntnb
+    O json historico_diario já vem consolidado nativamente pela landing zone.
+    Garante o parser seguro apenas para certificar as tipagens pro Supabase.
     """
-    por_data: dict[str, dict] = {}
-
-    def base(data: str) -> dict:
-        return {
-            "ticker_deb":               ticker,
-            "data_referencia":          data,
-            "pu_par":                   None,
-            "vna":                      None,
-            "juros":                    None,
-            "prazo_remanescente":       None,
-            "pu_indicativo":            None,
-            "taxa_indicativa":          None,
-            "taxa_compra":              None,
-            "taxa_venda":               None,
-            "duration_dias_uteis":      None,
-            "percentual_pu_par":        None,
-            "percentual_vne":           None,
-            "desvio_padrao":            None,
-            "reune":                    None,
-            "intervalo_indicativo_min": None,
-            "intervalo_indicativo_max": None,
-            "referencia_ntnb":          None,
-            "pu_indicativo_status":     None,
-            "taxa_indicativa_status":   None,
-            "flag_status":              None,
-            "data_ultima_atualizacao":  None,
-        }
-
-    # 1. grafico_pu.json → série completa de PU par + PU indicativo
-    if grafico_json:
-        for ponto in grafico_json.get("pus", []):
-            data = ponto.get("data")
-            if not data:
-                continue
-            r = por_data.setdefault(data, base(data))
-            r["pu_par"]       = f(ponto.get("valor_pu_historico"))
-            r["pu_indicativo"] = f(ponto.get("valor_pu_indicativo"))
-
-    # 2. pu_historico.json → adiciona vna, juros, flag_status por dia
-    if pu_hist_json:
-        for item in pu_hist_json.get("content", []):
-            data = item.get("data_referencia")
-            if not data:
-                continue
-            r = por_data.setdefault(data, base(data))
-            if r["pu_par"] is None:
-                r["pu_par"] = f(item.get("pu_par"))
-            r["vna"]                = f(item.get("vna"))
-            r["juros"]              = f(item.get("juros"))
-            r["prazo_remanescente"] = i(item.get("prazo_remanescente"))
-            r["flag_status"]        = item.get("flag_status")
-            r["data_ultima_atualizacao"] = data_curta(item.get("data_ultima_atualizacao"))
-
-    # 3. precos.json → adiciona taxas e mercado secundário (dias recentes)
-    if precos_json:
-        for item in precos_json.get("precos", []):
-            data = item.get("data_referencia")
-            if not data:
-                continue
-            r = por_data.setdefault(data, base(data))
-            r["taxa_indicativa"]          = f(item.get("taxa_indicativa"))
-            r["taxa_compra"]              = f(item.get("taxa_compra"))
-            r["taxa_venda"]               = f(item.get("taxa_venda"))
-            r["duration_dias_uteis"]      = i(item.get("duration"))
-            r["percentual_pu_par"]        = f(item.get("percentual_pu_par"))
-            r["percentual_vne"]           = f(item.get("percentual_vne"))
-            r["desvio_padrao"]            = f(item.get("desvio_padrao"))
-            r["reune"]                    = f(item.get("reune"))
-            r["intervalo_indicativo_min"] = f(item.get("intervalo_indicativo_minimo"))
-            r["intervalo_indicativo_max"] = f(item.get("intervalo_indicativo_maximo"))
-            r["referencia_ntnb"]          = item.get("data_referencia_ntnb")
-            r["pu_indicativo_status"]     = item.get("pu_indicativo_status")
-            r["taxa_indicativa_status"]   = item.get("taxa_indicativa_status")
-            if r["data_ultima_atualizacao"] is None:
-                r["data_ultima_atualizacao"] = data_curta(item.get("data_ultima_atualizacao"))
-            # pu_indicativo do precos confirma o do grafico
-            if r["pu_indicativo"] is None:
-                r["pu_indicativo"] = f(item.get("pu_indicativo"))
-
-        # fotografia atual de pu_historico (objeto raiz do precos.json)
-        ph = precos_json.get("pu_historico") or {}
-        data_ph = ph.get("data_referencia")
-        if data_ph:
-            r = por_data.setdefault(data_ph, base(data_ph))
-            if r["pu_par"] is None:
-                r["pu_par"] = f(ph.get("pu_par"))
-            if r["vna"] is None:
-                r["vna"] = f(ph.get("vna"))
-            if r["juros"] is None:
-                r["juros"] = f(ph.get("juros"))
-            if r["prazo_remanescente"] is None:
-                r["prazo_remanescente"] = i(ph.get("prazo_remanescente"))
-
-    return list(por_data.values())
+    registros = historico_json if isinstance(historico_json, list) else historico_json.get("dados", [])
+    
+    resultado = []
+    for r in registros:
+        if not r.get("data_referencia"):
+            continue
+        r["ticker_deb"] = ticker
+        
+        r["pu_par"] = f(r.get("pu_par"))
+        r["vna"] = f(r.get("vna"))
+        r["juros"] = f(r.get("juros"))
+        r["prazo_remanescente"] = i(r.get("prazo_remanescente"))
+        
+        r["pu_indicativo"] = f(r.get("pu_indicativo"))
+        r["taxa_indicativa"] = f(r.get("taxa_indicativa"))
+        r["taxa_compra"] = f(r.get("taxa_compra"))
+        r["taxa_venda"] = f(r.get("taxa_venda"))
+        r["duration_dias_uteis"] = f(r.get("duration_dias_uteis"))
+        r["desvio_padrao"] = f(r.get("desvio_padrao"))
+        r["percentual_pu_par"] = f(r.get("percentual_pu_par"))
+        r["percentual_vne"] = f(r.get("percentual_vne"))
+        r["intervalo_indicativo_min"] = f(r.get("intervalo_indicativo_min"))
+        r["intervalo_indicativo_max"] = f(r.get("intervalo_indicativo_max"))
+        r["spread_indicativo"] = f(r.get("spread_indicativo"))
+        
+        r["volume_financeiro"] = f(r.get("volume_financeiro"))
+        r["quantidade_negocios"] = i(r.get("quantidade_negocios"))
+        r["quantidade_titulos"] = i(r.get("quantidade_titulos"))
+        r["taxa_media_negocios"] = f(r.get("taxa_media_negocios"))
+        r["pu_medio_negocios"] = f(r.get("pu_medio_negocios"))
+        
+        r["percentual_reune"] = f(r.get("percentual_reune"))
+        
+        resultado.append(r)
+        
+    return resultado
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -352,7 +279,7 @@ def main():
     parser.add_argument("--ticker", help="Processar só este ticker")
     parser.add_argument(
         "--apenas",
-        choices=["operacoes", "agenda", "pu"],
+        choices=["operacoes", "agenda", "historico"],
         help="Processar só esta tabela",
     )
     parser.add_argument("--dry-run", action="store_true")
@@ -374,17 +301,15 @@ def main():
     tickers = [args.ticker] if args.ticker else descobrir_tickers()
     print(f"  Tickers: {len(tickers)}  |  Tabelas: {args.apenas or 'todas'}\n")
 
-    stats = {"operacoes": 0, "agenda": 0, "pu": 0, "sem_cnpj": 0, "erros": 0}
+    stats = {"operacoes": 0, "agenda": 0, "historico": 0, "sem_cnpj": 0, "erros": 0}
 
     for ticker in tickers:
         pasta = ANBIMA_DIR / ticker
         print(f"  {ticker:<10}", end="  ")
 
-        carac      = carregar_json(pasta / "caracteristicas.json")
-        agenda_j   = carregar_json(pasta / "agenda.json")
-        pu_hist_j  = carregar_json(pasta / "pu_historico.json")
-        grafico_j  = carregar_json(pasta / "grafico_pu.json")
-        precos_j   = carregar_json(pasta / "precos.json")
+        carac       = carregar_json(pasta / "caracteristicas.json")
+        agenda_j    = carregar_json(pasta / "agenda.json")
+        historico_j = carregar_json(pasta / "historico_diario.json")
 
         if not carac:
             print("sem caracteristicas.json — pulando")
@@ -403,7 +328,7 @@ def main():
             if not args.apenas or args.apenas == "operacoes":
                 op = parsear_operacao(ticker, carac)
                 if not args.dry_run:
-                    supabase.table("operacoes").upsert(
+                    supabase.table("deb_caracteristicas").upsert(
                         op, on_conflict="ticker_deb"
                     ).execute()
                 stats["operacoes"] += 1
@@ -415,7 +340,7 @@ def main():
                     regs = parsear_agenda(ticker, cnpj, agenda_j)
                     if not args.dry_run and regs:
                         for lote in batches(regs, BATCH_SIZE):
-                            supabase.table("agenda_pagamentos").upsert(
+                            supabase.table("deb_agenda").upsert(
                                 lote,
                                 on_conflict="ticker_deb,data_evento,evento",
                             ).execute()
@@ -424,20 +349,20 @@ def main():
                 else:
                     partes.append("agenda:—")
 
-            # ── pu_historico ──
-            if not args.apenas or args.apenas == "pu":
-                if grafico_j or pu_hist_j or precos_j:
-                    regs = parsear_pu(ticker, grafico_j, pu_hist_j, precos_j)
+            # ── historico_diario ──
+            if not args.apenas or args.apenas == "historico":
+                if historico_j:
+                    regs = parsear_historico_diario(ticker, historico_j)
                     if not args.dry_run and regs:
                         for lote in batches(regs, BATCH_SIZE):
-                            supabase.table("pu_historico").upsert(
+                            supabase.table("deb_historico_diario").upsert(
                                 lote,
                                 on_conflict="ticker_deb,data_referencia",
                             ).execute()
-                    stats["pu"] += len(regs)
-                    partes.append(f"pu:{len(regs)}")
+                    stats["historico"] += len(regs)
+                    partes.append(f"hist:{len(regs)}")
                 else:
-                    partes.append("pu:—")
+                    partes.append("hist:—")
 
         except Exception as e:
             print(f"ERRO: {e}")
@@ -449,7 +374,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"  Operações:        {stats['operacoes']}")
     print(f"  Eventos agenda:   {stats['agenda']}")
-    print(f"  Pontos PU:        {stats['pu']}")
+    print(f"  Registros diários:{stats['historico']}")
     if stats["sem_cnpj"]:
         print(f"  Sem CNPJ:         {stats['sem_cnpj']}")
     if stats["erros"]:

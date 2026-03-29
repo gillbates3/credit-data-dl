@@ -38,7 +38,7 @@ def criar_estrutura():
     print("\nEstrutura criada com sucesso.")
     print("\nPróximos passos:")
     print("  1. Execute: python 01_resolver_codigos_cvm.py")
-    print("     → Resolve cod_cvm de todas as empresas e atualiza empresas_abertas.csv")
+    print("     → Resolve cod_cvm de todas as empresas e atualiza empresas.csv")
     print("  2. Execute: python 02_download_cvm.py")
     print("     → Baixa DFP, ITR e FRE para todas as empresas")
     print("  3. Execute: python 03_download_anbima.py")

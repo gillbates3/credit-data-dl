@@ -3,7 +3,7 @@
 -- Execute no SQL Editor do seu projeto Supabase
 -- ============================================================
 
--- Extensão vetorial para doc_chunks
+-- Extensão vetorial para doc_chunks_qualitativo
 create extension if not exists vector;
 
 -- ── Tabela: emissores ─────────────────────────────────────────
@@ -29,8 +29,8 @@ comment on table emissores is
 create index if not exists idx_emissores_grupo
     on emissores (grupo_economico);
 
--- ── Tabela: demonstracoes_master ──────────────────────────────
-create table if not exists demonstracoes_master (
+-- ── Tabela: demonstracoes_financeiras ──────────────────────────────
+create table if not exists demonstracoes_financeiras (
     id              bigserial primary key,
     cnpj            text not null references emissores(cnpj),
     data_ref        date not null,
@@ -44,17 +44,17 @@ create table if not exists demonstracoes_master (
     unique (cnpj, data_ref, tipo_doc, demonstracao, cd_conta)
 );
 
-comment on table demonstracoes_master is
+comment on table demonstracoes_financeiras is
     'Dados financeiros estruturados — uma linha por conta por período. '
     'Populado automaticamente pelo script 04_parser_silver + 06_upsert_supabase.';
 
 create index if not exists idx_dem_cnpj_data
-    on demonstracoes_master (cnpj, data_ref desc);
+    on demonstracoes_financeiras (cnpj, data_ref desc);
 create index if not exists idx_dem_demonstracao
-    on demonstracoes_master (demonstracao, cd_conta);
+    on demonstracoes_financeiras (demonstracao, cd_conta);
 
--- ── Tabela: operacoes ─────────────────────────────────────────
-create table if not exists operacoes (
+-- ── Tabela: deb_caracteristicas ─────────────────────────────────────────
+create table if not exists deb_caracteristicas (
     id                      bigserial primary key,
 
     -- Identificação
@@ -113,18 +113,18 @@ create table if not exists operacoes (
     atualizado_em           timestamptz default now()
 );
 
-comment on table operacoes is
+comment on table deb_caracteristicas is
     'Uma linha por série de debênture/instrumento. '
     'Campos populados automaticamente via ANBIMA Data + parser de escrituras (Skill 1). '
     'grupo_economico fica em emissores, não aqui.';
 
-create index if not exists idx_op_cnpj       on operacoes (cnpj);
-create index if not exists idx_op_vencimento on operacoes (data_vencimento);
-create index if not exists idx_op_indexador  on operacoes (indexador);
-create index if not exists idx_op_status     on operacoes (status);
+create index if not exists idx_op_cnpj       on deb_caracteristicas (cnpj);
+create index if not exists idx_op_vencimento on deb_caracteristicas (data_vencimento);
+create index if not exists idx_op_indexador  on deb_caracteristicas (indexador);
+create index if not exists idx_op_status     on deb_caracteristicas (status);
 
--- ── Tabela: doc_chunks ────────────────────────────────────────
-create table if not exists doc_chunks (
+-- ── Tabela: doc_chunks_qualitativo ────────────────────────────────────────
+create table if not exists doc_chunks_qualitativo (
     id              bigserial primary key,
     cnpj            text not null references emissores(cnpj),
     tipo_doc        text not null,
@@ -140,17 +140,17 @@ create table if not exists doc_chunks (
     unique (cnpj, tipo_doc, fonte, chunk_index)
 );
 
-comment on table doc_chunks is
+comment on table doc_chunks_qualitativo is
     'Chunks de documentos qualitativos com embedding vetorial. '
     'Populado pelo pipeline de parsing de PDFs (Fase 4). '
     'Usado pelo context builder da Skill 3 via busca semântica.';
 
 -- Índice vetorial — descomentar após ter ≥ 200 chunks inseridos
--- create index on doc_chunks using ivfflat (embedding vector_cosine_ops)
+-- create index on doc_chunks_qualitativo using ivfflat (embedding vector_cosine_ops)
 --     with (lists = 100);
 
-create index if not exists idx_chunks_cnpj      on doc_chunks (cnpj);
-create index if not exists idx_chunks_tipo      on doc_chunks (cnpj, tipo_doc);
+create index if not exists idx_chunks_cnpj      on doc_chunks_qualitativo (cnpj);
+create index if not exists idx_chunks_tipo      on doc_chunks_qualitativo (cnpj, tipo_doc);
 
 -- ── Funções e triggers ────────────────────────────────────────
 create or replace function set_atualizado_em()
@@ -165,15 +165,15 @@ create or replace trigger trg_emissores_atualizado
     before update on emissores
     for each row execute function set_atualizado_em();
 
-create or replace trigger trg_operacoes_atualizado
-    before update on operacoes
+create or replace trigger trg_deb_caracteristicas_atualizado
+    before update on deb_caracteristicas
     for each row execute function set_atualizado_em();
 
 -- ── Views úteis ───────────────────────────────────────────────
 create or replace view v_ultimo_periodo as
 select distinct on (cnpj)
     cnpj, data_ref, tipo_doc
-from demonstracoes_master
+from demonstracoes_financeiras
 order by cnpj, data_ref desc;
 
 comment on view v_ultimo_periodo is 'Último período disponível por empresa';
@@ -198,7 +198,7 @@ select
     o.lei_incentivo,
     o.agente_fiduciario,
     o.status
-from operacoes o
+from deb_caracteristicas o
 join emissores e on e.cnpj = o.cnpj
 where o.status = 'ativo'
 order by o.data_vencimento;
@@ -207,11 +207,11 @@ comment on view v_portfolio_ativo is
     'Portfólio de operações ativas com dados do emissor — visão principal do sistema';
 
 
--- ── Tabela: agenda_pagamentos ─────────────────────────────────
+-- ── Tabela: deb_agenda ─────────────────────────────────
 -- Adicionada após análise dos payloads ANBIMA (ALAR14 e PETR26)
-create table if not exists agenda_pagamentos (
+create table if not exists deb_agenda (
     id                  bigserial primary key,
-    ticker_deb          text not null references operacoes(ticker_deb),
+    ticker_deb          text not null references deb_caracteristicas(ticker_deb),
     cnpj                text not null references emissores(cnpj),
 
     -- Datas (distintas conforme payload ANBIMA)
@@ -236,34 +236,56 @@ create table if not exists agenda_pagamentos (
     unique (ticker_deb, data_evento, evento)
 );
 
-comment on table agenda_pagamentos is
+comment on table deb_agenda is
     'Fluxo de eventos de cada debênture — juros, amortizações e resgates. '
     'Populado via scraping ANBIMA. Status Liquidado indica evento já pago.';
 
 create index if not exists idx_agenda_data
-    on agenda_pagamentos (data_evento);
+    on deb_agenda (data_evento);
 create index if not exists idx_agenda_ticker
-    on agenda_pagamentos (ticker_deb, data_evento);
+    on deb_agenda (ticker_deb, data_evento);
 create index if not exists idx_agenda_status
-    on agenda_pagamentos (status, data_evento);
+    on deb_agenda (status, data_evento);
 
--- ── Tabela: pu_historico ──────────────────────────────────────
--- Série temporal de PU por debênture
-create table if not exists pu_historico (
+-- ── Tabela: deb_historico_diario ──────────────────────────────────────
+-- Série temporal de mercado por debênture
+create table if not exists deb_historico_diario (
     id                      bigserial primary key,
-    ticker_deb              text not null references operacoes(ticker_deb),
+    ticker_deb              text not null references deb_caracteristicas(ticker_deb),
     data_referencia         date not null,
 
-    -- Campos do endpoint pu_historico (fotografia atual)
-    pu_par                  numeric,     -- PU pela curva par (teórico)
-    vna                     numeric,     -- Valor Nominal Atualizado
-    juros                   numeric,     -- PU juros separado (DI) — null para IPCA
-    prazo_remanescente      integer,     -- dias úteis até vencimento
+    -- Valores Teóricos / Curva do Papel (da Escritura)
+    pu_par                  numeric,
+    vna                     numeric,
+    juros                   numeric,
+    prazo_remanescente      integer,
 
-    -- Campos do endpoint grafico-pu-historico-indicativo (série diária)
-    -- Presentes em debêntures com histórico de mercado secundário
-    pu_indicativo           numeric,     -- PU de mercado (ANBIMA marcação)
+    -- Marcação a Mercado (Indicativos ANBIMA)
+    pu_indicativo           numeric,
+    taxa_indicativa         numeric,
+    taxa_compra             numeric,
+    taxa_venda              numeric,
+    duration_dias_uteis     numeric,
+    desvio_padrao           numeric,
+    percentual_pu_par       numeric,
+    percentual_vne          numeric,
+    intervalo_indicativo_min numeric,
+    intervalo_indicativo_max numeric,
+    referencia_ntnb         text,
+    spread_indicativo       numeric,
 
+    -- Dados de Negociação / Mercado Secundário (API Paga / Futuro)
+    volume_financeiro       numeric,
+    quantidade_negocios     integer,
+    quantidade_titulos      integer,
+    taxa_media_negocios     numeric,
+    pu_medio_negocios       numeric,
+
+    -- Metadados / Flags
+    reune                   text,
+    percentual_reune        numeric,
+    pu_indicativo_status    text,
+    taxa_indicativa_status  text,
     flag_status             text,
     data_ultima_atualizacao date,
     criado_em               timestamptz default now(),
@@ -271,13 +293,11 @@ create table if not exists pu_historico (
     unique (ticker_deb, data_referencia)
 );
 
-comment on table pu_historico is
-    'Série temporal de PU por debênture. '
-    'pu_par vem do endpoint pu_historico; pu_indicativo do grafico-pu-historico-indicativo. '
-    'Para debêntures novas (ex: ALAR14), pu_indicativo pode ser null.';
+comment on table deb_historico_diario is
+    'Série temporal consolidada e fotografias do mercado secundário por debênture.';
 
-create index if not exists idx_pu_ticker_data
-    on pu_historico (ticker_deb, data_referencia desc);
+create index if not exists idx_hist_ticker_data
+    on deb_historico_diario (ticker_deb, data_referencia desc);
 
 -- ── View: próximos pagamentos ─────────────────────────────────
 create or replace view v_proximos_pagamentos as
@@ -292,8 +312,8 @@ select
     a.valor,
     a.status,
     (a.data_evento - current_date) as dias_para_evento
-from agenda_pagamentos a
-join operacoes o  on o.ticker_deb = a.ticker_deb
+from deb_agenda a
+join deb_caracteristicas o  on o.ticker_deb = a.ticker_deb
 join emissores em on em.cnpj = o.cnpj
 where a.data_evento >= current_date
   and a.status = 'Previsto'

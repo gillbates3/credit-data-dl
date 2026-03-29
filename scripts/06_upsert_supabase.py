@@ -39,7 +39,8 @@ SCRIPT_DIR   = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 SILVER       = PROJETO_RAIZ / "data" / "02_silver"
 ANBIMA_DIR   = PROJETO_RAIZ / "data" / "01_landing" / "anbima"
-EMPRESAS_CSV = SCRIPT_DIR / "empresas_abertas.csv"
+EMPRESAS_CSV = SCRIPT_DIR / "empresas.csv"
+EMISSOES_CSV = SCRIPT_DIR / "emissoes.csv"
 ENV_FILE     = PROJETO_RAIZ / ".env"
 
 # Tamanho do lote para insert em batch
@@ -171,7 +172,7 @@ def upsert_demonstracoes(supabase, cnpj: str, dados: dict, dry_run: bool) -> int
 
     total = 0
     for lote in batches(registros, BATCH_SIZE):
-        supabase.table("demonstracoes_master").upsert(
+        supabase.table("demonstracoes_financeiras").upsert(
             lote,
             on_conflict="cnpj,data_ref,tipo_doc,demonstracao,cd_conta",
         ).execute()
@@ -182,54 +183,24 @@ def upsert_demonstracoes(supabase, cnpj: str, dados: dict, dry_run: bool) -> int
 
 # ── Upsert operacoes (ANBIMA) ─────────────────────────────────────────────────
 
-TICKERS_POR_CNPJ = {
-    # Mapeamento ticker → CNPJ do emissor
-    # Empresas abertas
-    "ALAR14": "23438929000100",
-    "CONX12": "23438929000100",
-    "CASN34": "82508433000117",
-    "CASN24": "82508433000117",
-    "ERDVC4": "08873873000110",
-    "ENAT33": "11669021000110",
-    "IGSS11": "08159965000133",
-    "IGSS21": "08159965000133",
-    "IVIAA0": "02919555000167",
-    "AEGE17": "15385166000140",
-    "AEGPB5": "08827501000158",
-    "RSAN26": "92802784000190",
-    # Empresas fechadas (CNPJ a preencher quando cadastradas)
-    "BTEL13": None,
-    "BTEL33": None,
-    "CLTM14": None,
-    "COMR15": None,
-    "HGLB13": None,
-    "HGLB23": None,
-    "HVSP11": None,
-    "IRJS15": None,
-    "ISPE12": None,
-    "ORIG12": None,
-    "QMCT14": None,
-    "RALM11": None,
-    "RGRA11": None,
-    "RIS422": None,
-    "RISP22": None,
-    "RMSA12": None,
-    "SABP12": None,
-    "SGAB11": None,
-    "SVEA16": None,
-    "UNEG11": None,
-    "CJEN13": None,
-    "BRKP28": None,
-    "SCPT13": None,
-    "CCIA23": None,
-}
-
+def carregar_mapa_tickers() -> dict[str, str | None]:
+    """Carrega o mapa ticker -> CNPJ do emissor do emissoes.csv."""
+    mapa = {}
+    with open(EMISSOES_CSV, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            t = row["ticker"].strip()
+            c = row.get("cnpj_emissor", "").strip() or None
+            mapa[t] = c
+    return mapa
 
 def upsert_operacoes(supabase, dry_run: bool):
     print("\n── Operações (ANBIMA) ──")
     registros = []
+    
+    tickers_map = carregar_mapa_tickers()
 
-    for ticker, cnpj in TICKERS_POR_CNPJ.items():
+    for ticker, cnpj in tickers_map.items():
         if not cnpj:
             continue  # fechadas ainda sem CNPJ cadastrado
 
@@ -269,7 +240,7 @@ def upsert_operacoes(supabase, dry_run: bool):
         return
 
     for lote in batches(registros, BATCH_SIZE):
-        supabase.table("operacoes").upsert(
+        supabase.table("deb_caracteristicas").upsert(
             lote,
             on_conflict="ticker_deb",
         ).execute()

@@ -56,7 +56,8 @@ SCRIPT_DIR   = Path(__file__).parent
 PROJETO_RAIZ = SCRIPT_DIR.parent
 LANDING      = PROJETO_RAIZ / "data" / "01_landing" / "cvm_raw"
 SILVER       = PROJETO_RAIZ / "data" / "02_silver"
-EMPRESAS_CSV = SCRIPT_DIR / "empresas_abertas.csv"
+EMPRESAS_CSV   = SCRIPT_DIR / "empresas.csv"
+MANUAL_UPLOADS = PROJETO_RAIZ / "data" / "01_landing" / "manual_uploads"
 
 # Nível máximo de conta a incluir (2 = "3.01", exclui "3.01.01" e mais fundo)
 NIVEL_MAX = 2
@@ -97,11 +98,30 @@ def normaliza_cod(cod: str) -> str:
 
 
 def parse_valor(valor_str: str) -> float | None:
-    v = valor_str.strip().replace(",", ".")
+    if valor_str is None: return None
+    v = str(valor_str).strip().replace(".", "").replace(",", ".")
     try:
         return float(v)
     except ValueError:
         return None
+
+def carregar_manual_dados(cnpj: str) -> dict | None:
+    """Busca dados na pasta de uploads manuais.
+    Decodifica arquivos JSON ou CSV que seguem o formato esperado.
+    """
+    pasta = MANUAL_UPLOADS / cnpj
+    if not pasta.exists():
+        return None
+    
+    # Exemplo: busca por um balanco.json ou balanco.csv
+    # Aqui implementamos uma logica 'coringa' conforme requisitado
+    json_path = pasta / "dados_financeiros.json"
+    if json_path.exists():
+        with open(json_path, encoding="utf-8") as f:
+            return json.load(f)
+            
+    # Fallback para outros arquivos pode ser adicionado aqui
+    return None
 
 
 def descobrir_csvs_filtrados() -> dict[str, list[Path]]:
@@ -276,30 +296,34 @@ def main():
 
         print(f"  Processando: {nome[:55]}", end="  ")
 
+        # 1. Tenta CVM
         json_empresa = construir_json_empresa(empresa, csvs_por_chave)
+        n_periodos_cvm = len(json_empresa["periodos"])
+
+        # 2. Se não encontrou CVM, tenta manual
+        if n_periodos_cvm == 0:
+            print("(CVM: vazio)", end=" ")
+            manual_dados = carregar_manual_dados(cnpj)
+            if manual_dados:
+                print("→ Manual: OK", end=" ")
+                # Mescla dados manuais (deve vir no formato de periodos)
+                for periodo, dados in manual_dados.get("periodos", {}).items():
+                    json_empresa["periodos"][periodo] = dados
+            else:
+                print("→ Manual: vazio", end=" ")
+        else:
+            print(f"(CVM: {n_periodos_cvm} períodos)", end=" ")
 
         n_periodos = len(json_empresa["periodos"])
-        n_dem = sum(
-            len(p["demonstracoes"])
-            for p in json_empresa["periodos"].values()
-        )
-
-        print(f"{n_periodos} períodos | {n_dem} demonstrações")
-
         if n_periodos == 0:
-            print(f"    AVISO: nenhum dado encontrado para cod_cvm={cod_cvm}")
+            print("→ PULANDO")
             continue
-
-        # Mostra resumo dos períodos encontrados
-        periodos = list(json_empresa["periodos"].keys())
-        if periodos:
-            print(f"    Períodos: {periodos[-1]} → {periodos[0]}")
 
         if not args.dry_run:
             saida = SILVER / f"{cnpj}.json"
             with open(saida, "w", encoding="utf-8") as f:
                 json.dump(json_empresa, f, ensure_ascii=False, indent=2)
-            print(f"    Salvo: {saida.name} ({saida.stat().st_size / 1024:.0f} KB)")
+            print(f"→ Salvo: {saida.name}")
 
     if args.dry_run:
         print("\n[dry-run] Nenhum arquivo foi salvo.")
