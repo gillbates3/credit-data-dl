@@ -89,7 +89,7 @@ def get_model(existing_json: dict):
     return genai.GenerativeModel(
         model_name="gemini-2.5-flash",
         system_instruction=SYSTEM_INSTRUCTION_GEN(str(existing_periods)),
-        generation_config=genai.GenerativeConfig(
+        generation_config=genai.GenerationConfig(
             temperature=0.0,
             response_mime_type="application/json",
         )
@@ -204,8 +204,19 @@ def call_ai_with_pdf_vision(model, cnpj: str, path: Path) -> dict | None:
     return None
 
 
-def merge_periods(consolidated: dict, new_data: dict):
+def merge_periods(consolidated: dict, new_data: dict | list):
     """Mescla novos períodos no dicionário consolidado (não sobrescreve dados já existentes)."""
+    if isinstance(new_data, list):
+        if len(new_data) > 0 and isinstance(new_data[0], dict) and "periodos" in new_data[0]:
+            new_data = new_data[0]
+        else:
+            print("    ⚠️ Resposta da IA em formato de lista inválida. Pulando mesclagem.")
+            return
+
+    if not isinstance(new_data, dict):
+        print(f"    ⚠️ Resposta da IA em formato inválido ({type(new_data)}). Pulando mesclagem.")
+        return
+
     for periodo, dados in new_data.get("periodos", {}).items():
         if periodo not in consolidated["periodos"]:
             consolidated["periodos"][periodo] = dados
@@ -270,7 +281,13 @@ def extract_from_pdfs(cnpj: str, pdf_paths: list[Path], consolidated: dict) -> d
             if result:
                 token_report["vision_mode"] += 1
 
-        if result:
+        if isinstance(result, list):
+            if len(result) > 0 and isinstance(result[0], dict) and "periodos" in result[0]:
+                result = result[0]
+            else:
+                result = None
+
+        if result and isinstance(result, dict):
             merge_periods(consolidated, result)
             consolidated["processed_files"].append({
                 "name": path.name,
@@ -279,7 +296,7 @@ def extract_from_pdfs(cnpj: str, pdf_paths: list[Path], consolidated: dict) -> d
             n_periodos = len(result.get("periodos", {}))
             print(f"    ✅ {n_periodos} período(s) extraído(s).")
         else:
-            print(f"    ❌ Nenhum dado extraído de {path.name}.")
+            print(f"    ❌ Nenhum dado extraído de {path.name} (Formato inválido ou nulo).")
 
         time.sleep(1)  # rate limit protection
 
