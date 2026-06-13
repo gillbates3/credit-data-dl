@@ -3,4 +3,4 @@ playwright
 supabase
 python-dotenv
 pdfplumber
-google-generativeai
+google-genai
