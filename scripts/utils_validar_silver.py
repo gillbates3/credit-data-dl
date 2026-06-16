@@ -1,16 +1,15 @@
 """
-05_validar_silver.py
+Script: utils_validar_silver.py
+Descrição: Valida a cobertura e a integridade contábil (Ativo = Passivo + PL) dos JSONs na camada Silver.
+           Gera um relatório detalhado de períodos encontrados, demonstrações presentes e gaps históricos.
 
-Valida os JSONs da camada Silver e imprime um relatório de cobertura:
-- Quantos períodos por empresa
-- Quais demonstrações estão presentes em cada período
-- Checagem básica de consistência contábil (Ativo = Passivo + PL)
-- Identifica gaps (trimestres faltando)
-
-Uso:
-  python 05_validar_silver.py
-  python 05_validar_silver.py --cnpj 23438929000100
-  python 05_validar_silver.py --mostrar-contas 23438929000100   # lista contas de uma empresa
+Funções/Procedimentos:
+- carregar_json(path: Path) -> dict: Carrega um arquivo JSON da camada Silver.
+- buscar_valor(dem: dict, prefixo: str) -> float | None: Busca o valor de uma conta contábil pelo prefixo (ex: '1' para Ativo).
+- checar_balanco(periodo_dados: dict) -> tuple[bool, str]: Valida a consistência de igualdade entre Ativo e Passivo + PL.
+- detectar_gaps(periodos: list[str]) -> list[str]: Identifica anos vazios no histórico de demonstrações.
+- relatorio_empresa(dados: dict, mostrar_contas: bool = False): Imprime um relatório detalhado por empresa no console.
+- main(): Orquestra a listagem dos JSONs, executa a validação e exibe estatísticas gerais de conformidade dos dados.
 """
 
 import argparse

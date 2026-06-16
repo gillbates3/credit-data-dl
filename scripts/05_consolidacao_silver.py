@@ -1,46 +1,21 @@
 """
-04_parser_silver.py
+Script: 05_consolidacao_silver.py
+Descrição: Consolida os dados financeiros da camada Landing (CVM filtrados) e dados manuais na camada Silver.
+           Gera um arquivo JSON consolidado por empresa contendo contas de nível intermediário (1 e 2).
+           Mescla informações da CVM com dados estruturados obtidos por uploads manuais (ex: via IA).
 
-Lê os CSVs filtrados da camada Landing (01_landing/cvm_raw/*/filtrado/)
-e produz um JSON consolidado por empresa na camada Silver (02_silver/).
-
-Nível: intermediário — todas as linhas de nível 1 e 2 do plano de contas CVM,
-sem descer a subcontas de nível 3+.
-
-Estrutura do JSON de saída (02_silver/{CNPJ}.json):
-{
-  "cnpj": "23438929000100",
-  "cod_cvm": "25194",
-  "nome": "Alares Internet Participacoes SA",
-  "periodos": {
-    "2024-12-31": {
-      "tipo": "DFP",
-      "demonstracoes": {
-        "BPA": { "1": {...}, "1.01": {...}, "1.02": {...} },
-        "BPP": { "2": {...}, "2.01": {...} },
-        "DRE": { "3": {...}, "3.01": {...} },
-        "DFC": { "6": {...}, "6.01": {...} }
-      }
-    },
-    "2024-09-30": {
-      "tipo": "ITR",
-      ...
-    }
-  }
-}
-
-Cada conta tem a estrutura:
-{
-  "cd_conta": "3.01",
-  "ds_conta": "Receita de Venda de Bens e/ou Serviços",
-  "valor": 1234567.89,
-  "ordem": 1
-}
-
-Uso:
-  python 04_parser_silver.py
-  python 04_parser_silver.py --cnpj 23438929000100   # só uma empresa
-  python 04_parser_silver.py --dry-run               # mostra o que faria sem salvar
+Funções/Procedimentos:
+- carregar_empresas() -> list[dict]: Lê a base de empresas cadastradas no `empresas.csv`.
+- nivel_conta(cd_conta: str) -> int: Retorna o nível de profundidade na hierarquia da conta contábil (ex: 3.01 = nível 2).
+- normaliza_cnpj(cnpj: str) -> str: Filtra e remove caracteres não numéricos do CNPJ.
+- normaliza_cod(cod: str) -> str: Normaliza o código CVM, tratando zeros à esquerda em códigos numéricos.
+- parse_valor(valor_str: str) -> float | None: Converte uma string no formato de moeda CVM para tipo float numérico.
+- carregar_manual_dados(cnpj: str) -> dict | None: Carrega o JSON de dados financeiros extraído de PDFs manuais (se houver).
+- descobrir_csvs_filtrados() -> dict[str, list[Path]]: Varre a landing zone de DFP e ITR retornando um dicionário com os CSVs de cada demonstração.
+- ler_csv_cvm(csv_path: Path) -> list[dict]: Efetua a leitura de um arquivo CSV filtrado de dados da CVM.
+- processar_linhas(linhas: list[dict], cod_cvm_alvo: str) -> dict[str, dict[str, dict]]: Filtra, limpa e organiza as contas da CVM por período de referência para uma empresa.
+- construir_json_empresa(empresa: dict, csvs_por_chave: dict[str, list[Path]]) -> dict: Constrói a estrutura consolidada da empresa integrando todas as demonstrações financeiras (BPA, BPP, DRE, DFC, etc.) da CVM.
+- main(): Orquestra a execução, aplicando lógica de verificação incremental (mtime) e salvando as estruturas consolidadas na camada Silver.
 """
 
 import argparse

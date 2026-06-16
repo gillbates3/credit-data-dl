@@ -1,3 +1,33 @@
+"""
+Script: servico_ia_qualitativa.py
+Descrição: Serviço qualitativo baseado em LLM (Gemini) para transcrição de PDFs financeiros complexos
+           (ex: escrituras de emissão, relatórios de rating, DFP) para texto estruturado em Markdown.
+           Implementa um sistema incremental por hash MD5 (armazenado no YAML Frontmatter do Markdown de saída)
+           e filtros automáticos para remoção de ruídos contábeis (linhas pontilhadas corrompidas).
+
+Funções/Procedimentos:
+- log_status(mensagem: str) -> None: Imprime mensagens de log formatadas com timestamp atual.
+- calcular_md5(conteudo_em_bytes: bytes) -> str: Calcula a assinatura MD5 de dados em bytes.
+- is_mostly_punctuation(texto: str) -> bool: Verifica se a linha contém excesso de pontuação, caracterizando ruído.
+- strip_corrupted_runs(line: str) -> str: Elimina sequências longas de pontos ou hífens no fim de uma linha.
+- should_drop_input_line(line: str) -> bool: Define se a linha de texto do PDF deve ser pulada/descartada.
+- sanitize_extracted_text(text: str) -> tuple[str, int]: Limpa e reduz linhas vazias consecutivas do texto extraído.
+- parse_frontmatter(markdown_existente: str) -> tuple[list[dict], str]: Extrai o frontmatter YAML de arquivos markdown existentes.
+- _quote_yaml(valor: str) -> str: Helper para escapar strings no formato YAML.
+- _unquote_yaml(valor: str) -> str: Helper para decodificar strings lidas do YAML.
+- render_frontmatter(arquivos_processados: list[dict], corpo: str) -> str: Constrói a seção YAML de controle na parte superior do arquivo Markdown.
+- sanitize_generated_markdown(markdown_text: str) -> tuple[str, int]: Sanitiza o markdown final retornado pelo Gemini.
+- extract_full_text_from_bytes(conteudo_em_bytes: bytes, nome_arquivo: str) -> tuple[str, bool]: Extrai texto do PDF e retorna se é escaneado.
+- get_model_qualitativo(): Retorna a configuração de geração padrão da LLM.
+- call_ai_with_text(config, cnpj: str, nome_arquivo: str, text: str) -> str | None: Executa a chamada do Gemini contendo texto bruto (mais barato).
+- file_state_name(file_info) -> str: Retorna o status de processamento do arquivo no Gemini File API.
+- call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None: Upload de um PDF (fatia) e chamada Vision.
+- processar_pdf_vision_por_lotes(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes, pages_per_chunk: int) -> str | None: Fatia o PDF escaneado em grupos de páginas e processa cada fatia via Vision, concatenando os Markdowns parciais.
+- montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str: Formata e sanitiza o bloco Markdown correspondente ao arquivo processado.
+- extrair_dados_qualitativos(cnpj: str, arquivos_em_memoria: list[tuple[str, bytes]], markdown_existente: str = "") -> str: Orquestrador principal da extração qualitativa incremental. Quando incluir_frontmatter=False, retorna apenas o corpo Markdown sem o header YAML.
+- carregar_arquivos_em_memoria(pasta_base: Path) -> list[tuple[str, bytes]]: Lê PDFs locais salvando-os em buffers na memória RAM.
+"""
+
 import argparse
 import hashlib
 import io
@@ -6,6 +36,8 @@ import re
 import tempfile
 import time
 from pathlib import Path
+
+from pypdf import PdfReader, PdfWriter
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -26,6 +58,7 @@ MODEL_NAME = "gemini-2.5-flash"
 
 MIN_TEXT_CHARS_PER_PAGE = 60
 MAX_VISION_RETRIES = 3
+VISION_PAGES_PER_CHUNK = 15  # Máximo de páginas por fatia no modo Vision
 MAX_OUTPUT_LINE_LENGTH = 1200
 PROMPT_QUALITATIVO = """
 Você é um Especialista Sênior em Extração de Dados Financeiros e Transcrição de Documentos Corporativos.
@@ -275,7 +308,10 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
                 temp_path = tmp.name
 
             log_status(f"    [Vision] Tentativa {attempt + 1}/{MAX_VISION_RETRIES}: preparando upload de {nome_arquivo}...")
-            uploaded = CLIENT.files.upload(file=temp_path)
+            uploaded = CLIENT.files.upload(
+                file=temp_path,
+                config=types.UploadFileConfig(mime_type="application/pdf"),
+            )
 
             log_status(f"    [Vision] Upload concluído para {nome_arquivo}. Aguardando processamento remoto...")
             while True:
@@ -324,6 +360,78 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
     return None
 
 
+def processar_pdf_vision_por_lotes(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    conteudo_em_bytes: bytes,
+    pages_per_chunk: int = VISION_PAGES_PER_CHUNK,
+) -> str | None:
+    """Fatia o PDF escaneado em grupos de páginas e processa cada fatia via Vision.
+
+    Cada fatia é serializada como um PDF temporário independente, enviada ao
+    Gemini File API e processada separadamente para evitar truncamento de output.
+    Os Markdowns parciais são concatenados ao final.
+    """
+    try:
+        reader = PdfReader(io.BytesIO(conteudo_em_bytes))
+        total_pages = len(reader.pages)
+    except Exception as e:
+        log_status(f"    [Vision-Lote] Erro ao ler PDF com pypdf ({nome_arquivo}): {e}. Tentando Vision completo.")
+        return call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+
+    if total_pages == 0:
+        log_status(f"    [Vision-Lote] PDF sem páginas detectadas: {nome_arquivo}.")
+        return None
+
+    if total_pages <= pages_per_chunk:
+        # PDF pequeno o suficiente para processar de uma só vez
+        log_status(
+            f"    [Vision-Lote] PDF com {total_pages} página(s) ≤ {pages_per_chunk}. "
+            "Enviando integralmente ao Vision."
+        )
+        return call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+
+    log_status(
+        f"    [Vision-Lote] PDF escaneado com {total_pages} páginas. "
+        f"Fatiando em chunks de {pages_per_chunk} página(s)."
+    )
+
+    markdown_chunks: list[str] = []
+    suffix = Path(nome_arquivo).suffix or ".pdf"
+
+    for i in range(0, total_pages, pages_per_chunk):
+        pag_inicio = i + 1
+        pag_fim = min(i + pages_per_chunk, total_pages)
+        nome_chunk = f"{nome_arquivo} (Páginas {pag_inicio} a {pag_fim} de {total_pages})"
+
+        # Serializa a fatia de páginas como PDF temporário
+        writer = PdfWriter()
+        for page_idx in range(i, min(i + pages_per_chunk, total_pages)):
+            writer.add_page(reader.pages[page_idx])
+
+        chunk_bytes_buffer = io.BytesIO()
+        writer.write(chunk_bytes_buffer)
+        chunk_bytes = chunk_bytes_buffer.getvalue()
+
+        log_status(
+            f"    [Vision-Lote] Enviando fatia: páginas {pag_inicio}-{pag_fim} "
+            f"({len(chunk_bytes) / 1024:.1f} KB) ao Vision..."
+        )
+
+        resp = call_ai_with_pdf_vision(config, cnpj, nome_chunk, chunk_bytes)
+        if resp:
+            markdown_chunks.append(resp)
+        else:
+            log_status(f"    [Vision-Lote] Falha no Gemini para as páginas {pag_inicio}-{pag_fim} de {nome_arquivo}.")
+            return None
+
+    if not markdown_chunks:
+        return None
+
+    return "\n\n".join(markdown_chunks)
+
+
 def montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str:
     conteudo, removed_lines = sanitize_generated_markdown(markdown_pdf.strip())
     if removed_lines:
@@ -333,10 +441,54 @@ def montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str:
     return f"\n\n# {nome_arquivo}\n\n{conteudo}\n"
 
 
+def processar_pdf_texto_por_lotes(config, cnpj: str, nome_arquivo: str, pages, pages_per_chunk: int = 8) -> str | None:
+    total_pages = len(pages)
+    markdown_chunks = []
+    
+    for i in range(0, total_pages, pages_per_chunk):
+        chunk_pages = pages[i : i + pages_per_chunk]
+        pag_inicio = i + 1
+        pag_fim = i + len(chunk_pages)
+        
+        log_status(f"    [Lote-Texto] Extraindo texto das páginas {pag_inicio} a {pag_fim} de {total_pages}...")
+        
+        text_parts = []
+        for page_idx, page in enumerate(chunk_pages):
+            text = (page.extract_text() or "").strip()
+            if len(text) >= MIN_TEXT_CHARS_PER_PAGE:
+                text_parts.append(f"\n\n--- PÁGINA {pag_inicio + page_idx} ---\n{text}")
+                
+        chunk_raw_text = "".join(text_parts).strip()
+        if not chunk_raw_text:
+            log_status(f"    [Lote-Texto] Sem texto útil nas páginas {pag_inicio} a {pag_fim}. Pulando.")
+            continue
+            
+        chunk_sanitized_text, removed_lines = sanitize_extracted_text(chunk_raw_text)
+        if removed_lines:
+            log_status(f"    [Sanitizacao] {removed_lines} linha(s) ruidosa(s) removida(s) do texto das páginas {pag_inicio}-{pag_fim}.")
+            
+        nome_chunk = f"{nome_arquivo} (Páginas {pag_inicio} a {pag_fim} de {total_pages})"
+        
+        log_status(f"    [Lote-Texto] Enviando páginas {pag_inicio}-{pag_fim} ao Gemini...")
+        resp_text = call_ai_with_text(config, cnpj, nome_chunk, chunk_sanitized_text)
+        
+        if resp_text:
+            markdown_chunks.append(resp_text)
+        else:
+            log_status(f"    [Lote-Texto] Falha no Gemini para as páginas {pag_inicio}-{pag_fim}.")
+            return None
+            
+    if not markdown_chunks:
+        return None
+        
+    return "\n\n".join(markdown_chunks)
+
+
 def extrair_dados_qualitativos(
     cnpj: str,
     arquivos_em_memoria: list[tuple[str, bytes]],
     markdown_existente: str = "",
+    incluir_frontmatter: bool = True,
 ) -> str:
     arquivos_processados, corpo_existente = parse_frontmatter(markdown_existente or "")
     hashes_processados = {item["hash_md5"] for item in arquivos_processados if item.get("hash_md5")}
@@ -361,27 +513,38 @@ def extrair_dados_qualitativos(
                 f"[qualitativo] [{indice}/{total_arquivos}] Analisando {nome_arquivo} "
                 f"({tamanho_kb:,.1f} KB | md5={hash_md5[:12]}...)"
             )
-            log_status(f"[qualitativo] [{indice}/{total_arquivos}] Extraindo texto do PDF em memória...")
-            texto_extraido, is_scanned = extract_full_text_from_bytes(conteudo_em_bytes, nome_arquivo)
+            log_status(f"[qualitativo] [{indice}/{total_arquivos}] Abrindo PDF em memória...")
 
             markdown_pdf = None
-            if texto_extraido and not is_scanned:
-                char_count = len(texto_extraido)
-                estimated_tokens = char_count // 4
+            is_scanned = True
+            try:
+                with pdfplumber.open(io.BytesIO(conteudo_em_bytes)) as pdf:
+                    pages = pdf.pages
+                    total_pages = len(pages)
+                    pages_with_text = 0
+                    # Forçar extração básica de texto para verificar se é scanned
+                    for page in pages:
+                        text = (page.extract_text() or "").strip()
+                        if len(text) >= MIN_TEXT_CHARS_PER_PAGE:
+                            pages_with_text += 1
+                    is_scanned = total_pages > 0 and pages_with_text < (total_pages * 0.1)
+
+                    if total_pages > 0 and not is_scanned:
+                        log_status(
+                            f"[qualitativo] [{indice}/{total_arquivos}] PDF com {total_pages} páginas. "
+                            f"Usando modo Texto por Lotes."
+                        )
+                        markdown_pdf = processar_pdf_texto_por_lotes(config, cnpj, nome_arquivo, pages, pages_per_chunk=8)
+            except Exception as e:
+                print(f"    [pdfplumber] Erro ao abrir {nome_arquivo}: {e}")
+                is_scanned = True
+
+            if not markdown_pdf:
                 log_status(
-                    f"[qualitativo] [{indice}/{total_arquivos}] Texto extraído com {char_count:,} chars "
-                    f"(~{estimated_tokens:,} tokens). Usando modo Texto."
+                    f"[qualitativo] [{indice}/{total_arquivos}] PDF sem texto útil ou falha no lote. "
+                    f"Iniciando modo Vision por lotes."
                 )
-                markdown_pdf = call_ai_with_text(config, cnpj, nome_arquivo, texto_extraido)
-                if not markdown_pdf:
-                    log_status(f"[qualitativo] [{indice}/{total_arquivos}] Fallback Texto→Vision para {nome_arquivo}.")
-                    markdown_pdf = call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
-            else:
-                log_status(
-                    f"[qualitativo] [{indice}/{total_arquivos}] PDF sem texto útil suficiente. "
-                    f"Usando modo Vision."
-                )
-                markdown_pdf = call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+                markdown_pdf = processar_pdf_vision_por_lotes(config, cnpj, nome_arquivo, conteudo_em_bytes)
 
             if not markdown_pdf:
                 duracao = time.time() - inicio_arquivo
@@ -412,6 +575,8 @@ def extrair_dados_qualitativos(
         f"[qualitativo] Processamento concluído. Total acumulado no manifesto: "
         f"{len(arquivos_processados)} arquivo(s)."
     )
+    if not incluir_frontmatter:
+        return (corpo + "\n").lstrip("\n") if corpo else ""
     return render_frontmatter(arquivos_processados, corpo + ("\n" if corpo else ""))
 
 

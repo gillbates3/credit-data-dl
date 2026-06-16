@@ -1,12 +1,12 @@
 """
-06_consolidacao_anbima_silver.py
+Script: 06_parser_silver_anbima.py
+Descrição: Consolida dados brutos da ANBIMA para a camada Silver, organizando por CNPJ do emissor.
+           Mapeia os tickers para CNPJs usando emissoes.csv e copia incrementalmente os arquivos JSON.
 
-Lê os JSONs brutos de 01_landing/anbima/{TICKER}/ e organiza na camada
-Silver seguindo a hierarquia por CNPJ:
-  02_silver/{CNPJ}/anbima/{TICKER}/
-
-Uso:
-  python scripts/06_parser_silver_anbima.py
+Funções/Procedimentos:
+- carregar_mapa_emissoes() -> dict[str, str]: Mapeia os tickers de debêntures para os CNPJs de seus emissores usando `emissoes.csv`.
+- descobrir_tickers_landing() -> list[str]: Lista todos os tickers de debêntures que possuem dados baixados na Landing Zone da ANBIMA.
+- main(): Executa a movimentação/cópia incremental (baseada em tamanho e mtime) das abas da ANBIMA da Landing Zone para as subpastas da Silver.
 """
 
 import csv

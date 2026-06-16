@@ -1,10 +1,19 @@
 """
-01_resolver_codigos_cvm.py
+Script: 02_descobrir_emissores.py
+Descrição: Realiza a descoberta de emissores e a resolução de seus códigos CVM.
+           1. Descoberta: Escaneia a pasta da ANBIMA para encontrar novos emissores (CNPJs).
+           2. Resolução: Consulta o cadastro público da CVM para resolver cod_cvm.
+           3. Inteligência: Se houver múltiplos códigos CVM para o mesmo CNPJ, prioriza o registro ATIVO.
+           4. Sincronização: Atualiza o empresas.csv e emissoes.csv com todos os dados consolidados.
 
-1. Descoberta: Escaneia a pasta da ANBIMA para encontrar novos emissores (CNPJs).
-2. Resolução: Consulta o cadastro público da CVM para resolver cod_cvm.
-3. Inteligência: Se houver múltiplos códigos CVM para o mesmo CNPJ, prioriza o registro ATIVO.
-4. Sincronização: Atualiza o empresas.csv com todos os dados consolidados.
+Funções/Procedimentos:
+- normaliza_cnpj(cnpj: str) -> str: Remove caracteres não numéricos de uma string de CNPJ.
+- carregar_csv_empresas() -> list[dict]: Lê as empresas já cadastradas em `empresas.csv`.
+- baixar_cadastro_cvm() -> list[dict]: Faz o download do cadastro público de companhias abertas da CVM ou lê do cache local (se menor de 24h).
+- escaneia_emissores_anbima() -> dict[str, str]: Escaneia a pasta de dados da ANBIMA em busca de novos CNPJs/Nomes de emissores.
+- sincronizar_cnpjs_emissoes(): Preenche CNPJs ausentes no arquivo `emissoes.csv` utilizando informações das características da ANBIMA.
+- buscar_cvm_inteligente(cadastro: list[dict], cnpj: str) -> dict | None: Localiza o cadastro CVM de um CNPJ, priorizando registros ativos em caso de duplicidade.
+- main(): Orquestra a sincronização de CNPJs de emissões, descoberta de novos emissores na landing zone e resolução de dados na CVM, salvando o resultado em `empresas.csv`.
 """
 
 import csv

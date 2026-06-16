@@ -1,10 +1,22 @@
 """
-01_download_anbima.py (Async + Deep Layer)
+Script: 01_download_anbima.py
+Descrição: Baixa dados completos de debêntures através de Web Scraping Dinâmico na plataforma ANBIMA.
+           Suporta:
+            - Camada Light: Cadastro, Agenda, Histórico PU (Gráfico) e Taxas (últimos 5 dias).
+            - Camada Deep: Preenchimento de taxas históricas faltantes via Calculadora (UI Interativa).
 
-Baixa dados completos de debêntures através de Web Scraping Dinâmico na plataforma ANBIMA.
-Suporta:
- - Camada Light: Cadastro, Agenda, Histórico PU (Gráfico) e Taxas (últimos 5 dias).
- - Camada Deep: Preenchimento de taxas históricas faltantes via Calculadora (UI Interativa).
+Funções/Procedimentos:
+- carregar_tickers() -> list[str]: Carrega os tickers das debêntures definidos no arquivo `emissoes.csv`.
+- salvar_json(dados: dict | list, caminho: Path): Salva um dicionário ou lista como JSON formatado em UTF-8.
+- resolver_nome_arquivo(url_name: str, ticker: str) -> str: Determina o nome do arquivo JSON a partir do endpoint capturado da API da ANBIMA.
+- f(v) -> float | None: Helper para converter strings numéricas de formato brasileiro (vírgula) para float.
+- i(v) -> int | None: Helper para converter strings numéricas ou floats para inteiro.
+- data_curta(v) -> str | None: Helper para extrair os 10 primeiros caracteres (YYYY-MM-DD) de uma string de data.
+- consolidar_historico_light(ticker: str, grafico: dict, curva: dict, precos: dict) -> list[dict]: Une os dados de PU e taxas diárias da ANBIMA (vindos de diferentes endpoints) por data de referência.
+- extrair_ticker_light(page, ticker: str, destino: Path) -> list[str]: Realiza o scraping básico das abas 'caracteristicas', 'agenda' e 'precos' de um ticker via Playwright.
+- extrair_taxas_faltantes_calculadora(page, ticker: str, destino: Path): Acessa a calculadora da ANBIMA para preencher, via inserção de datas, as taxas indicativas históricas que estejam nulas.
+- processar_ticker(browser, ticker: str, semaphore: asyncio.Semaphore): Orquestra a execução das camadas Light e Deep para um ticker específico dentro do limite de concorrência.
+- main(): Ponto de entrada do script que inicializa o Playwright, lê os argumentos ou o CSV e gerencia o processamento paralelo.
 """
 
 import json

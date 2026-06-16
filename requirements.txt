@@ -3,4 +3,8 @@ playwright
 supabase
 python-dotenv
 pdfplumber
+pypdf
 google-genai
+fastapi
+uvicorn[standard]
+python-multipart

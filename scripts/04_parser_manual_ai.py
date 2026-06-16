@@ -1,15 +1,21 @@
 """
-05b_ai_pdf_parser.py
+Script: 04_parser_manual_ai.py
+Descrição: Parser híbrido e econômico para extração de dados financeiros de PDFs corporativos.
+           - Filtra PDFs por nome de arquivo para focar em demonstrações financeiras.
+           - Extrai texto das páginas mais relevantes usando pdfplumber para barateamento de tokens (Modo Texto).
+           - Faz fallback para Gemini Vision em arquivos escaneados sem texto extraível (Modo Vision).
+           - Consolida os períodos financeiros extraídos em formato JSON.
 
-Parser híbrido e econômico para extração de dados financeiros de PDFs.
-
-ESTRATÉGIA DE ECONOMIA DE TOKENS:
-  1. Filtra PDFs por nome de arquivo (pula escrituras, ratings, atas, etc.)
-  2. Usa pdfplumber para extrair TEXTO das páginas relevantes (GRÁTIS)
-  3. Manda apenas o TEXTO das tabelas para a IA (5-10x mais barato que mandar PDF)
-  4. Fallback para PDF Vision apenas em PDFs escaneados (sem texto extraível)
-
-Compatível com o 04_parser_silver.py (mesmo formato de saída JSON).
+Funções/Procedimentos:
+- SYSTEM_INSTRUCTION_GEN(existing_json_str: str) -> str: Retorna a instrução do sistema configurada com os períodos já existentes no banco local.
+- get_model(existing_json: dict): Inicializa o modelo Gemini (gemini-2.5-flash) com suporte a output estruturado JSON.
+- is_financial_pdf(path: Path) -> bool: Verifica se o nome do arquivo se enquadra nas regras de documentos financeiros.
+- extract_financial_pages_text(path: Path) -> tuple[str, bool]: Extrai o texto das páginas relevantes do PDF e classifica se é uma imagem escaneada.
+- call_ai_with_text(model, cnpj: str, filename: str, text: str) -> dict | None: Executa a requisição ao Gemini contendo o texto extraído da demonstração financeira.
+- call_ai_with_pdf_vision(model, cnpj: str, path: Path) -> dict | None: Faz o upload do PDF e solicita o parsing visual ao Gemini (fallback).
+- merge_periods(consolidated: dict, new_data: dict | list): Mescla os períodos financeiros recém-extraídos na estrutura do JSON consolidado da empresa.
+- extract_from_pdfs(cnpj: str, pdf_paths: list[Path], consolidated: dict) -> dict | None: Orquestra a extração incremental de um conjunto de PDFs aplicando as regras do pipeline híbrido.
+- main(): Localiza os diretórios de CNPJ, lê o JSON correspondente já existente e aciona o pipeline de extração incremental.
 """
 import os
 import io

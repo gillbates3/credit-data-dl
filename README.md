@@ -14,11 +14,14 @@ pip install requests playwright supabase python-dotenv pdfplumber google-generat
 playwright install chromium
 ```
 
-2. **Supabase & Gemini (Crie o arquivo `.env` na raiz):**
+2. **Supabase, Gemini e API (Crie o arquivo `.env` ou `.env.local` na raiz):**
 ```env
 SUPABASE_URL=https://SUA-URL.supabase.co
 SUPABASE_KEY=sua_service_role_key
 GEMINI_API_KEY=sua_chave_gemini
+API_KEY=uma_chave_forte_para_o_header_x_api_key
+# Opcional para o front em dev:
+# CORS_ORIGINS=http://localhost:3000
 ```
 > **Nota:** Use a *service_role key* do Supabase para ter acesso total de gravação, não a *anon key*.
 
@@ -90,6 +93,33 @@ python scripts/06_parser_silver_anbima.py
 python scripts/utils_validar_silver.py
 python scripts/08_upsert_supabase.py
 ```
+
+---
+
+## API FastAPI (V2)
+
+Suba a API a partir da raiz do repo:
+
+```bash
+pip install -r requirements.txt
+uvicorn api.main:app --reload --port 8000
+```
+
+Autenticacao: todos os endpoints, exceto `GET /health`, exigem o header `X-API-Key`.
+
+Endpoints principais:
+
+- `POST /ingest/ticker`
+- `POST /ingest/documentos`
+- `GET /jobs`
+- `GET /jobs/{job_id}`
+- `GET /portfolio`
+- `GET /proximos-pagamentos`
+- `GET /emissores/{cnpj}`
+
+Limitacao conhecida:
+
+- Os jobs em background rodam no mesmo processo do FastAPI. Se o servidor reiniciar durante uma execucao, o job pode ficar preso em `rodando` ate intervencao manual ou futura rotina de saneamento.
 
 ---
 

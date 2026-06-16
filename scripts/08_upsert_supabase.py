@@ -1,17 +1,24 @@
 """
-08_upsert_supabase.py
+Script: 08_upsert_supabase.py
+Descrição: Lê os dossiês consolidados na camada Silver (dados financeiros e dados ANBIMA) e popula
+           incrementalmente o banco de dados do Supabase (tabelas emissores, demonstracoes_financeiras,
+           deb_caracteristicas, deb_agenda e deb_historico_diario).
 
-Lê o Dossiê do Emissor (Camada Silver) e popula o Supabase:
-  - emissores
-  - demonstracoes_financeiras (Balanços)
-  - deb_caracteristicas      (ANBIMA Caracteristicas)
-  - deb_agenda               (ANBIMA Agenda)
-  - deb_historico_diario     (ANBIMA Preços)
-
-Uso:
-  python scripts/08_upsert_supabase.py
-  python scripts/08_upsert_supabase.py --cnpj 23438929000100
-  python scripts/08_upsert_supabase.py --dry-run
+Funções/Procedimentos:
+- carregar_tracker() -> dict: Carrega o histórico de mtime dos arquivos que foram enviados na última execução.
+- salvar_tracker(tracker): Grava o histórico atualizado de mtime no arquivo `.last_upsert.json`.
+- carregar_env(): Carrega as variáveis de ambiente do arquivo `.env` para o escopo local.
+- conectar_supabase(): Cria uma conexão cliente com a API do Supabase.
+- normaliza_cnpj(cnpj: str) -> str: Remove caracteres não numéricos de uma string de CNPJ.
+- f(v) -> float | None: Converte valores de moeda em formato BR (vírgula) para float.
+- i(v) -> int | None: Converte strings numéricas ou floats para inteiro.
+- batches(lst, n): Helper gerador para criar lotes/batches de tamanho n para envio ao banco.
+- carregar_cadastro_empresas() -> list[dict]: Lê os emissores cadastrados em `empresas.csv`.
+- carregar_mapa_emissoes() -> dict[str, list[str]]: Mapeia os CNPJs emissores para suas listas de tickers em `emissoes.csv`.
+- upsert_emissores(supabase, empresas: list[dict], dry_run: bool): Executa a inserção/atualização dos dados das empresas na tabela `emissoes`.
+- upsert_financeiro(supabase, cnpj: str, dry_run: bool) -> int: Lê o JSON financeiro Silver da empresa e faz o upsert na tabela `demonstracoes_financeiras`.
+- upsert_anbima_ticker(supabase, cnpj: str, ticker: str, dry_run: bool) -> dict: Lê características, agenda e histórico ANBIMA da Silver e faz o upsert nas respectivas tabelas do Supabase.
+- main(): Orquestra a execução incremental com base nas alterações dos arquivos locais e nos filtros informados via console.
 """
 
 import argparse

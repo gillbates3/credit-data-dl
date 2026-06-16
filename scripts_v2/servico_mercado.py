@@ -1,3 +1,19 @@
+"""
+Script: servico_mercado.py
+Descrição: Serviço assíncrono para extração de dados de mercado (características, agenda e preços históricos)
+           de debêntures na ANBIMA via Playwright. Suporta a Camada Light (BFF da plataforma) e a Camada Deep
+           (preenchimento de taxas pela calculadora da ANBIMA com limitadores e circuit breaker).
+
+Funções/Procedimentos:
+- f(v) -> Optional[float]: Converte strings numéricas brasileiras para tipo float.
+- i(v) -> Optional[int]: Converte strings/floats numéricos para tipo inteiro.
+- data_curta(v) -> Optional[str]: Extrai a substring YYYY-MM-DD de uma data completa.
+- parse_remuneracao(remun_str: str, indexador_obj: Any) -> tuple[Optional[str], Optional[float]]: Extrai o indexador e a taxa prefixada da string de remuneração.
+- consolidar_historico_light(ticker: str, grafico: dict, curva: dict, precos: dict) -> List[Dict[str, Any]]: Consolida dados diários de PU e taxas da ANBIMA por data.
+- extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List[Dict], data_corte_deep: Optional[str] = None, datas_desconhecidas: Optional[List[str]] = None): Busca taxas diárias nulas utilizando a calculadora dinâmica da ANBIMA.
+- buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep: Optional[str] = None, datas_desconhecidas: Optional[List[str]] = None) -> Dict[str, Any]: Ponto de entrada assíncrono para extração, orquestração e normalização dos dados do ticker.
+"""
+
 import json
 import asyncio
 import re
@@ -238,7 +254,12 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
     encontrados = set()
     dados_brutos = {}
     
+    # Acumuladores e controle para paginação da agenda
+    agenda_eventos_acumulados = []
+    agenda_paginacao = {"total_pages": 1, "current_page": 0}
+    
     async def handle_response(response):
+        nonlocal agenda_eventos_acumulados, agenda_paginacao
         if "web-bff" in response.url and ticker in response.url and response.request.method == "GET":
             try:
                 data = await response.json()
@@ -255,14 +276,33 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
                 elif url_name == "pu-historico":
                     arquivo_nome = "pu_historico.json"
 
-                if arquivo_nome not in encontrados:
-                    dados_brutos[arquivo_nome] = data
-                    encontrados.add(arquivo_nome)
+                if url_name == "agenda":
+                    if isinstance(data, dict) and "content" in data:
+                        eventos = data.get("content", [])
+                        for ev in eventos:
+                            # Evita adicionar duplicados no acumulo local
+                            chave_ev = (ev.get("data_evento"), ev.get("evento"), ev.get("data_base"))
+                            chaves_acumuladas = {(e.get("data_evento"), e.get("evento"), e.get("data_base")) for e in agenda_eventos_acumulados}
+                            if chave_ev not in chaves_acumuladas:
+                                agenda_eventos_acumulados.append(ev)
+                        agenda_paginacao["total_pages"] = data.get("total_pages", 1)
+                        agenda_paginacao["current_page"] = data.get("number", 0)
+                        # Salva em dados_brutos com todo o conteúdo acumulado até agora
+                        dados_brutos["agenda.json"] = {"content": agenda_eventos_acumulados}
+                else:
+                    if arquivo_nome not in encontrados:
+                        dados_brutos[arquivo_nome] = data
+                        encontrados.add(arquivo_nome)
             except: pass
 
     async def handle_route(route):
         url = route.request.url
-        new_url = re.sub(r"periodo=\d+", "periodo=0", url) # Hack para pegar todo o gráfico (vida inteira)
+        new_url = url
+        if "grafico-pu-historico-indicativo" in url:
+            new_url = re.sub(r"periodo=\d+", "periodo=0", new_url)
+        if "agenda" in url:
+            new_url = re.sub(r"size=\d+", "size=100", new_url)
+            
         await route.continue_(url=new_url)
 
     async with async_playwright() as p:
@@ -272,7 +312,7 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
         
         # Bloquear mídia para otimização
         await page.route("**/*.{png,jpg,jpeg,webp,svg,gif}", lambda route: route.abort())
-        await page.route("**/grafico-pu-historico-indicativo*", handle_route)
+        await page.route("**/web-bff/**", handle_route)
         page.on("response", handle_response)
         
         print(f"[{ticker}] Navegando para extração de dados brutos (API BFF)...")
@@ -283,6 +323,24 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
                 # domcontentloaded evita os timeouts de 30s causados por trackers ou long-polling
                 await page.goto(f"https://data.anbima.com.br/debentures/{ticker}/{aba}", wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(2)
+                
+                if aba == "agenda":
+                    # Se houver mais páginas da agenda, percorre clicando no botão de paginação
+                    await asyncio.sleep(1) # Garante que a primeira resposta foi processada
+                    for _ in range(15): # Limite de segurança de 15 páginas
+                        if agenda_paginacao["current_page"] + 1 >= agenda_paginacao["total_pages"]:
+                            break
+                        
+                        print(f"[{ticker}] -> Agenda possui mais páginas. Carregando próxima página ({agenda_paginacao['current_page'] + 1} de {agenda_paginacao['total_pages']})...")
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await asyncio.sleep(0.5)
+                        
+                        next_btn = page.locator("#pagination-next-button")
+                        if await next_btn.is_visible() and await next_btn.is_enabled():
+                            await next_btn.click()
+                            await asyncio.sleep(2) # Espera resposta ser processada
+                        else:
+                            break
             except Exception as e:
                 print(f"[{ticker}] -> Aviso ao acessar aba {aba}: {e}")
             

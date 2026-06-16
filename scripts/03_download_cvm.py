@@ -1,24 +1,17 @@
 """
-02_download_cvm.py
+Script: 03_download_cvm.py
+Descrição: Baixa DFP (anuais), ITR (trimestrais) e FRE (formulário de referência) do Portal de Dados Abertos da CVM.
+           Filtra os dados públicos pelos códigos CVM das empresas de interesse cadastradas no empresas.csv.
 
-Baixa DFP (anuais), ITR (trimestrais) e FRE (formulário de referência)
-do Portal de Dados Abertos da CVM para as empresas em empresas_abertas.csv.
-
-Estratégia:
-  - DFP e ITR: arquivos ZIP anuais com CSVs estruturados (dados financeiros)
-  - FRE: arquivos ZIP anuais com documentos do formulário de referência
-  - Filtra por cod_cvm para baixar apenas o necessário
-
-Estrutura de saída:
-  data/01_landing/cvm_raw/dfp/YYYY/
-  data/01_landing/cvm_raw/itr/YYYY/
-  data/01_landing/cvm_raw/fre/YYYY/
-
-Uso:
-  python 02_download_cvm.py
-  python 02_download_cvm.py --anos 2022 2023 2024     # anos específicos
-  python 02_download_cvm.py --tipo dfp                # só DFP
-  python 02_download_cvm.py --tipo itr --anos 2024    # ITR de 2024
+Funções/Procedimentos:
+- carregar_empresas() -> list[dict]: Carrega a lista de empresas ativas de `empresas.csv` com códigos CVM válidos.
+- codigos_cvm(empresas: list[dict]) -> set[str]: Retorna um conjunto com os códigos CVM das empresas fornecidas.
+- baixar_zip(url: str, destino: Path) -> bool: Faz o download de um arquivo ZIP da CVM para a pasta local correspondente, caso ainda não exista.
+- filtrar_e_salvar_csv(zip_path: Path, tabela: str, cod_cvms: set[str], destino_dir: Path) -> int: Extrai a tabela de dentro do ZIP (con ou ind), filtra pelas empresas cadastradas e salva como CSV. Retorna a quantidade de registros extraídos.
+- processar_dfp_itr(tipo: str, anos: list[int], cod_cvms: set[str]): Executa o download e extração seletiva para dados estruturados (DFP/ITR) dos anos desejados.
+- processar_fre(anos: list[int], cod_cvms: set[str]): Executa o download e extração seletiva para seções financeiras e qualitativas relevantes do FRE.
+- listar_zip(zip_path: str): Utilitário de depuração para listar os arquivos internos de um pacote ZIP da CVM.
+- main(): Lê e valida parâmetros passados via console (CLI) e inicia o processamento do pipeline de downloads da CVM.
 """
 
 import argparse

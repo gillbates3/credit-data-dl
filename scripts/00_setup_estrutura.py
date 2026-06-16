@@ -1,7 +1,10 @@
 """
-00_setup_estrutura.py
-Cria a estrutura de pastas do projeto credit-data-dl.
-Execute uma vez antes de qualquer outro script.
+Script: 00_setup_estrutura.py
+Descrição: Cria a estrutura de pastas do projeto credit-data-dl (landing zone, silver, gold, logs).
+           Deve ser executado uma vez antes de qualquer outro script.
+
+Funções/Procedimentos:
+- criar_estrutura(): Cria as pastas necessárias na raiz do projeto (como landing zone, silver, gold e logs).
 """
 
 import os

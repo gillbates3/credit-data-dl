@@ -1,5 +1,29 @@
+"""
+Script: servico_ia_quantitativa.py
+Descrição: Serviço quantitativo baseado em LLM (Gemini) para extração de demonstrações financeiras
+           e geração estruturada de JSONs (padrão CVM) a partir de PDFs contidos em memória RAM.
+           Implementa um sistema incremental por hash MD5 para skips automáticos de arquivos já processados.
+
+Funções/Procedimentos:
+- log_status(mensagem: str) -> None: Imprime mensagens de log formatadas com timestamp atual.
+- system_instruction_quantitativa(existing_periods: list[str]) -> str: Retorna a instrução do sistema quantitativa com períodos existentes.
+- get_generation_config_quantitativo(periodos_existentes: list[str] | None = None): Retorna as configurações de geração estruturada em JSON da LLM.
+- normaliza_cnpj(cnpj: str) -> str: Remove caracteres não numéricos do CNPJ.
+- calcular_md5(conteudo_em_bytes: bytes) -> str: Gera o hash MD5 a partir de dados binários.
+- is_financial_pdf_name(nome_arquivo: str) -> bool: Verifica heurística de arquivos financeiros pelo nome.
+- extract_financial_pages_text_from_bytes(conteudo_em_bytes: bytes, nome_arquivo: str) -> tuple[str, bool]: Extrai texto de páginas financeiras e indica se é PDF escaneado.
+- call_ai_with_text(config, cnpj: str, nome_arquivo: str, text: str) -> dict | None: Faz requisição de texto ao Gemini (modo mais econômico).
+- file_state_name(file_info) -> str: Retorna o status de processamento do arquivo no Gemini File API.
+- call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> dict | None: Upload do PDF e chamada Vision (fallback).
+- normalizar_resposta_ia(new_data: dict | list | None) -> dict | None: Valida e garante a estrutura adequada da resposta JSON da LLM.
+- criar_json_base(cnpj: str) -> dict: Cria cabeçalhos e inicializa a base JSON da empresa.
+- processed_hashes(consolidated: dict) -> set[str]: Coleta os hashes MD5 dos PDFs contidos no manifesto de processamento.
+- merge_periods(consolidated: dict, new_data: dict) -> int: Mescla novos períodos e contas contábeis no histórico da empresa.
+- extrair_dados_quantitativos(cnpj: str, arquivos_em_memoria: list[tuple[str, bytes]], periodos_existentes_db: list[str] | None = None) -> dict: Orquestrador da extração quantitativa incremental em lote.
+- carregar_arquivos_em_memoria(pasta_base: Path) -> list[tuple[str, bytes]]: Carrega PDFs recursivos do disco local em buffers bytes.
+"""
+
 import argparse
-import copy
 import hashlib
 import io
 import json
@@ -148,8 +172,8 @@ Retorne um objeto JSON com esta estrutura:
 """
 
 
-def get_generation_config_quantitativo(existing_json: dict):
-    existing_periods = list((existing_json or {}).get("periodos", {}).keys())
+def get_generation_config_quantitativo(periodos_existentes: list[str] | None = None):
+    existing_periods = periodos_existentes or []
     return types.GenerateContentConfig(
         system_instruction=system_instruction_quantitativa(existing_periods),
         temperature=0.0,
@@ -304,12 +328,12 @@ def normalizar_resposta_ia(new_data: dict | list | None) -> dict | None:
     return new_data
 
 
-def criar_json_base(cnpj: str, json_existente: dict | None) -> dict:
-    base = copy.deepcopy(json_existente) if isinstance(json_existente, dict) else {}
-    base["cnpj"] = normaliza_cnpj(cnpj)
-    base.setdefault("periodos", {})
-    base.setdefault("processed_files", [])
-    return base
+def criar_json_base(cnpj: str) -> dict:
+    return {
+        "cnpj": normaliza_cnpj(cnpj),
+        "periodos": {},
+        "processed_files": [],
+    }
 
 
 def processed_hashes(consolidated: dict) -> set[str]:
@@ -350,10 +374,10 @@ def merge_periods(consolidated: dict, new_data: dict) -> int:
 def extrair_dados_quantitativos(
     cnpj: str,
     arquivos_em_memoria: list[tuple[str, bytes]],
-    json_existente: dict = None,
+    periodos_existentes_db: list[str] | None = None,
 ) -> dict:
-    consolidated = criar_json_base(cnpj, json_existente)
-    config = get_generation_config_quantitativo(consolidated)
+    consolidated = criar_json_base(cnpj)
+    config = get_generation_config_quantitativo(periodos_existentes_db)
     processed_md5 = processed_hashes(consolidated)
     total_arquivos = len(arquivos_em_memoria)
 
@@ -481,7 +505,7 @@ if __name__ == "__main__":
         f"[debug] Iniciando chamada principal com {len(arquivos_em_memoria)} arquivo(s) "
         f"e {total_bytes / (1024 * 1024):.2f} MB em memória."
     )
-    resultado = extrair_dados_quantitativos(args.cnpj, arquivos_em_memoria, json_existente=None)
+    resultado = extrair_dados_quantitativos(args.cnpj, arquivos_em_memoria)
     with open(DEBUG_FILE, "w", encoding="utf-8") as f:
         json.dump(resultado, f, ensure_ascii=False, indent=2)
     duracao_total = time.time() - inicio_total

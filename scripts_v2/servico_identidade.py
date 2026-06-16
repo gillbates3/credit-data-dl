@@ -1,3 +1,17 @@
+"""
+Script: servico_identidade.py
+Descrição: Serviço assíncrono para identificação de emissores e resolução de cadastros contábeis (CVM).
+           Obtém o CNPJ de um ticker de debênture via ANBIMA e localiza o registro CVM usando cache em RAM
+           e suporte a arquivos de overrides manuais (overrides_cvm.json).
+
+Funções/Procedimentos:
+- normaliza_cnpj(cnpj: str) -> str: Remove pontuação e retorna apenas caracteres numéricos de CNPJ.
+- carregar_overrides() -> dict: Lê do arquivo `overrides_cvm.json` mapeamentos de códigos CVM forçados por CNPJ.
+- obter_cadastro_cvm() -> list[dict]: Baixa assincronamente a base cadastral de companhias da CVM ou lê do cache de RAM (TTL 24h).
+- resolver_cvm(cadastro: list[dict], cnpj: str) -> dict | None: Resolve o cadastro CVM associado a um CNPJ aplicando regras de desempate e prioridade de overrides.
+- buscar_identidade_emissor(ticker: str) -> dict: Função principal que busca CNPJ na ANBIMA e o associa com informações da CVM.
+"""
+
 import asyncio
 import json
 import io

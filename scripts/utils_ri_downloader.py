@@ -1,74 +1,33 @@
 """
-utils_ri_downloader.py — RI Document Downloader
-=============================================
-Baixa documentos de sites de Relações com Investidores (plataforma MZ Group / MZiQ).
+Script: utils_ri_downloader.py
+Descrição: Downloader modular de documentos de sites de Relações com Investidores (MZ Group / MZiQ).
+           - Descobre abas e sub-entidades irmãs associadas à Central de Resultados.
+           - Implementa pipeline com 3 camadas: API MZiQ direta, Playwright Headless (com cliques em menus/anos) e Scraping Estático.
+           - Executa downloads incrementais baseados em integridade/hash e gera um manifesto consolidado.
 
-Estrutura de pastas gerada:
-──────────────────────────────────────────────────────
-  <pasta-de-saída>/
-    <Nome da Aba>/        ← uma pasta por empresa/SPE encontrada
-      arquivo1.pdf
-      arquivo2.xlsx
-      ...
-    manifesto.json
-    catalogo.json
-
-Exemplos concretos:
-
-  Arteris/
-    Arteris/
-      2024-03-15_Release Resultados 4T23.pdf
-      2024-01-10_Relatorio Agente Fiduciario.pdf
-    Intervias/
-      2024-03-15_Release Resultados 4T23.pdf
-    Via Paulista/
-      ...
-    Planalto Sul/
-      ...
-
-  Igua/
-    Grupo Igua/
-      2024-11-13_ITR 3T24.pdf
-    Igua Rio/
-      ...
-    Igua Sergipe/
-      ...
-
-  Aegea/
-    Central De Resultados/
-      2024-11-06_Release 3T24.pdf
-      ...
-──────────────────────────────────────────────────────
-
-Instalação:
-    pip install playwright requests tqdm
-    playwright install chromium
-
-Uso:
-    # Arteris — todas as 8 abas, documentos de 2022 em diante
-    python utils_ri_downloader.py \\
-        --url https://ri.arteris.com.br/informacoes-aos-investidores/central-de-resultados/arteris/ \\
-        --from-year 2022 --out ./Arteris
-
-    # Iguá — todas as abas, 2023+
-    python utils_ri_downloader.py \\
-        --url https://ri.igua.com.br/informacoes-aos-investidores/central-de-resultados/ \\
-        --from-year 2023 --out ./Igua
-
-    # Aegea — 2023+
-    python utils_ri_downloader.py \\
-        --url https://ri.aegea.com.br/informacoes-aos-investidores/central-de-resultados/ \\
-        --from-year 2023 --out ./Aegea
-
-    # Só a aba atual (sem descobrir irmãs)
-    python utils_ri_downloader.py \\
-        --url https://ri.arteris.com.br/informacoes-aos-investidores/central-de-resultados/intervias/ \\
-        --from-year 2023 --no-all-tabs --out ./Arteris
-
-    # Descobrir sem baixar
-    python utils_ri_downloader.py \\
-        --url https://ri.arteris.com.br/informacoes-aos-investidores/central-de-resultados/arteris/ \\
-        --from-year 2023 --discover-only --out ./Arteris
+Funções/Procedimentos:
+- sanitize(name: str, max_len: int = 100) -> str: Remove tags HTML e caracteres inválidos para nomes de arquivos ou pastas.
+- slug_to_label(slug: str) -> str: Converte um slug de URL (nome de aba) em nome de pasta legível.
+- is_file_url(url: str) -> bool: Verifica se a URL de um recurso aponta para uma extensão de arquivo suportada.
+- year_from(s: str) -> int | None: Tenta extrair um ano de 4 dígitos a partir de uma string.
+- dedupe(links: list[dict]) -> list[dict]: Remove links duplicados de uma lista de metadados.
+- fetch_json(url: str, session: requests.Session, params: dict = None) -> dict | list | None: Faz requisições HTTP GET robustas com retentativas para ler dados JSON.
+- download_file(url: str, dest: Path, session: requests.Session) -> bool: Efetua o download com stream e barra de progresso (tqdm).
+- detect_uuid(url: str, session: requests.Session) -> str | None: Localiza o UUID do gerenciador de arquivos MZ a partir do cache ou do HTML da página.
+- discover_tabs(page_url: str, session: requests.Session) -> list[dict]: Mapeia abas irmãs na Central de Resultados.
+- _url_slug(url: str) -> str: Retorna o último segmento do path da URL ou o hostname simplificado como slug.
+- _mziq_list(uuid: str, session: requests.Session, params: dict = None) -> list[dict]: Faz o fetch na API MZiQ.
+- _mziq_to_links(docs: list[dict], uuid: str, from_year: int, to_year: int, tab_label: str) -> list[dict]: Padroniza metadados da API MZ e aplica filtros.
+- mziq_fetch_tab(uuid: str, session: requests.Session, from_year: int, to_year: int, categories: list[str], tab_label: str) -> list[dict]: Orquestra requisições paginadas na API MZiQ para coletar documentos.
+- playwright_scrape(url: str, from_year: int, to_year: int, tab_label: str) -> tuple[list[dict], list[str]]: Usa Playwright para varrer o site, capturar links e interceptar tráfego.
+- _pw_click_years(page, from_year, to_year, file_links, tab_label): Automação para clicar em dropdowns de ano, botões e menus de categoria no Playwright.
+- _pw_dom_links(page, tab_label) -> list[dict]: Captura links de arquivo expostos no DOM da página no Playwright.
+- static_scrape(url: str, session: requests.Session, tab_label: str) -> list[dict]: Extrai links estáticos via requests comum e regex.
+- compute_hash(file_path: Path) -> str: Calcula o hash MD5 de um arquivo local.
+- download_all(links: list[dict], output_dir: Path, session: requests.Session): Executa downloads e salva o `manifesto.json` na pasta de saída.
+- _fetch_wp_json_mz(base_url: str, session: requests.Session, from_year: int, to_year: int, tab_label: str) -> list[dict]: Acessa endpoints WordPress do plugin mz-ir para coletar documentos (ex: Vtal).
+- run(url: str, output_dir: Path, ...): Ponto de partida orquestrador do scraper.
+- main(): Lê e parseia os argumentos via console e inicia a rotina de download.
 """
 
 import argparse

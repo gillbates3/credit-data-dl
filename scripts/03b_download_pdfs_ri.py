@@ -1,4 +1,24 @@
-import argparse
+"""
+Script: 03b_download_pdfs_ri.py
+Descrição: Descobre sites de Relações com Investidores (RI) de emissores usando IA (Gemini com Search)
+           e faz o download inteligente de demonstrações financeiras (DFPs, ITRs, releases, relatórios)
+           via Playwright / BeautifulSoup.
+
+Funções/Procedimentos:
+- limpa_cnpj(cnpj_str: str) -> str: Remove caracteres não numéricos e completa com zeros à esquerda até 14 dígitos.
+- sanitize_filename(filename: str) -> str: Sanitiza o nome de um arquivo substituindo caracteres especiais por underscores.
+- descobrir_url_ri(empresa: str, cnpj: str) -> dict: Usa Gemini (com Google Search ativo) para encontrar a página de RI da empresa.
+- descobrir_todas_urls(empresas_list: list) -> tuple: Mapeia as URLs de RI das empresas via cache ou LLM, separando por nível de confiança.
+- revisar_pendentes_terminal(pendentes: list) -> list: Solicita feedback interativo no terminal para validar ou informar manualmente URLs de RI de baixa confiança.
+- identifica_tipo_e_ano_pdf(texto_ancora: str, href: str) -> tuple: Determina o tipo de relatório financeiro e o ano de exercício com base no texto do link e do href.
+- load_or_create_metadata(dir_path: Path, cnpj_numeros: str, base_emp: dict) -> dict: Carrega ou inicia o arquivo `metadata.json` para rastreamento de downloads e erros da empresa.
+- save_metadata(dir_path: Path, metadata: dict): Salva o arquivo de metadados na pasta de destino da empresa.
+- navegar_e_extrair_v2(empresa: dict, run_dir: Path) -> dict: Usa Playwright para abrir o site de RI, descobrir links de subpáginas candidatas e capturar os links de PDFs.
+- fallback_crawl(empresa, base_url, pdfs_encontrados): Realiza scraping HTTP simples usando BeautifulSoup caso o Playwright falhe.
+- realizar_download_pdf(empresa, pdf_data, tipo_doc, ano, out_dir, metadata): Efetua o download do arquivo PDF, validando o tamanho máximo de 40MB e o cabeçalho %PDF.
+- main(): Lê os parâmetros de console, inicia a varredura das empresas, a interação com o usuário e executa o download dos PDFs.
+"""
+
 import json
 import logging
 import os

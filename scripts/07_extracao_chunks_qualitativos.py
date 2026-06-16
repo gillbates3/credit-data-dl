@@ -1,9 +1,10 @@
 """
-07_extracao_chunks_qualitativos.py
+Script: 07_extracao_chunks_qualitativos.py
+Descrição: Script placeholder para processamento e fragmentação de dados qualitativos (chunks)
+           de PDFs (como FRE e DFP) para alimentar bancos vetoriais ou RAG.
 
-Script placeholder para processamento e fragmentação de dados qualitativos (chunks)
-de PDFs (como FRE e DFP) para alimentar bancos vetoriais ou RAG.
-A ser implementado no futuro.
+Funções/Procedimentos:
+- main(): Função principal que exibe uma mensagem indicando que a funcionalidade está em desenvolvimento.
 """
 
 def main():

@@ -1,3 +1,19 @@
+"""
+Script: servico_cvm.py
+Descrição: Serviço modular e assíncrono para consulta e filtragem de demonstrações financeiras (DFP/ITR)
+           da base de dados abertos da CVM, com cacheamento de arquivos ZIP em memória para performance.
+
+Funções/Procedimentos:
+- normaliza_cod(cod: str) -> str: Normaliza o código CVM removendo zeros à esquerda se numérico.
+- normaliza_cnpj(cnpj: str) -> str: Remove caracteres não numéricos do CNPJ.
+- nivel_conta(cd_conta: str) -> int: Determina a profundidade hierárquica de uma conta contábil CVM.
+- parse_valor(valor_str: str) -> float | None: Converte strings no formato monetário BR para float.
+- baixar_zip_cvm(url: str) -> bytes | None: Realiza o download assíncrono do arquivo ZIP da CVM usando cache em memória (TTL 24h).
+- extrair_csv_filtrado(zip_bytes: bytes, tabela: str, cod_cvm_alvo: str) -> list[dict]: Extrai e filtra um CSV específico de dentro do ZIP carregado.
+- processar_linhas(linhas: list[dict]) -> dict[str, dict]: Processa e formata as contas contábeis de interesse agrupadas por data de referência.
+- buscar_dados_cvm(cnpj: str, codigo_cvm: str, anos_retroativos: int = 2) -> dict: Função principal assíncrona para buscar todas as demonstrações CVM no histórico de anos desejado.
+"""
+
 import asyncio
 import csv
 import io
