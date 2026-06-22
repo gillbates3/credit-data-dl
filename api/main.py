@@ -4,7 +4,7 @@ import sys
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import rotas_ingestao, rotas_leitura
+from api import rotas_cadastro, rotas_leitura
 from api.config import settings
 from api.seguranca import exigir_api_key
 
@@ -27,5 +27,5 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(rotas_ingestao.router, dependencies=[Depends(exigir_api_key)])
+app.include_router(rotas_cadastro.router, dependencies=[Depends(exigir_api_key)])
 app.include_router(rotas_leitura.router, dependencies=[Depends(exigir_api_key)])

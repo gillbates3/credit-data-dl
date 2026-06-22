@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-gotham), Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-gotham), Helvetica, Arial, sans-serif;
+
+  --color-chrome-bg: var(--chrome-bg);
+  --color-chrome-ink: var(--chrome-ink);
+  --color-chrome-muted: var(--chrome-muted);
+  --color-chrome-line: var(--chrome-line);
+  --color-chrome-item-bg: var(--chrome-item-bg);
+  --color-chrome-item-bg-hover: var(--chrome-item-bg-hover);
+  --color-chrome-item-line: var(--chrome-item-line);
+
+  --color-accent: var(--accent);
+}
+
+:root {
+  --bg: #fff0dc;
+  --bg-2: #fff7ea;
+  --panel: #f5e6cd;
+  --panel-strong: #f0dcb8;
+  --line: rgba(10, 35, 0, 0.12);
+  --line-strong: rgba(10, 35, 0, 0.3);
+  --ink: #0a2300;
+  --muted: rgba(10, 35, 0, 0.6);
+  --accent: #0a2300;
+  --accent-strong: #0a0f00;
+  --on-accent: #fff0dc;
+  --chrome-bg: #0a2300;
+  --chrome-ink: #fff0dc;
+  --chrome-muted: rgba(255, 240, 220, 0.66);
+  --chrome-line: rgba(255, 240, 220, 0.18);
+  --chrome-item-bg: rgba(255, 240, 220, 0.10);       /* fundo do item inativo */
+  --chrome-item-bg-hover: rgba(255, 240, 220, 0.20); /* hover */
+  --chrome-item-line: rgba(255, 240, 220, 0.30);     /* borda do item inativo */
+  --success: #0a2300;
+  --success-bg: rgba(10, 35, 0, 0.08);
+  --success-line: rgba(10, 35, 0, 0.22);
+  --info: #2f5d3a;
+  --info-bg: rgba(47, 93, 58, 0.1);
+  --info-line: rgba(47, 93, 58, 0.28);
+  --warning: #6b4a26;
+  --warning-bg: rgba(205, 170, 130, 0.22);
+  --warning-line: rgba(205, 170, 130, 0.55);
+  --danger: #8a2b1e;
+  --danger-bg: rgba(138, 43, 30, 0.1);
+  --danger-line: rgba(138, 43, 30, 0.3);
+  --shadow-soft:
+    0 1px 2px rgba(10, 35, 0, 0.04),
+    0 10px 28px rgba(10, 35, 0, 0.05);
+  --shadow-card:
+    0 1px 2px rgba(10, 35, 0, 0.05),
+    0 16px 44px rgba(10, 35, 0, 0.07);
+  --radius-card: 1rem;
+  --radius-control: 0.625rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nav-chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(10, 35, 0, 0.18);
+  border-radius: 999px;
+  background: rgba(10, 35, 0, 0.05);
+  padding: 0.42rem 0.78rem;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.35);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.nav-chip-link::after {
+  content: "↗";
+  font-size: 0.78rem;
+  opacity: 0.72;
+}
+
+.nav-chip-link:hover,
+.nav-chip-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(10, 35, 0, 0.32);
+  background: rgba(10, 35, 0, 0.1);
+  color: var(--accent-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 220, 0.4),
+    0 10px 24px rgba(10, 35, 0, 0.08);
+}
+
+.nav-chip-link:focus-visible {
+  outline: none;
+}
+
+.nav-chip-link[data-size="sm"] {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.92rem;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(10, 35, 0, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

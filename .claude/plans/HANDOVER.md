@@ -1,30 +1,33 @@
-# HANDOVER — credit-data-dl V2 (continuação da arquitetura)
+# HANDOVER — credit-data-dl V2
 
-> Documento de transição entre conversas. O usuário (Gabriel, dono/arquiteto do projeto) continua a mesma linha de trabalho numa nova conversa. **Próximo passo: planejar a API FastAPI.** Eu (Claude) atuo como **Tech Lead / Arquiteto** — discuto e desenho, o usuário delega a implementação a agentes Codex. Não implemento código diretamente a menos que pedido; entrego **planos autocontidos**.
+> Documento de transição entre conversas. O usuário (**Gabriel**, dono/arquiteto) continua a mesma linha de trabalho numa conversa nova, começando do zero. Eu (Claude) atuo como **Tech Lead / Arquiteto**: discuto, desenho e **entrego planos autocontidos** em `.claude/plans/`; o usuário **delega a implementação a agentes Codex** (em conversas paralelas). Não implemento código direto a menos que pedido. Idioma: **pt-BR**. Plataforma: **Windows** (PowerShell + Bash disponíveis).
+>
+> **Estado macro (2026-06-22):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional e em polimento**. Em curso: (a) **refactor de estilo p/ a marca BOCAINA**, (b) **título descritivo de documentos**, (c) **fix de contraste do menu**. Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
 
 ---
 
 ## 1. O que é o projeto
 
-`credit-data-dl`: pipeline de extração/consolidação de dados de **debêntures brasileiras** para análise de crédito corporativo. Semeadura por **ticker** (ex.: PETR26): a partir do ticker, descobre o emissor (CNPJ via ANBIMA), cruza com CVM, baixa dados de mercado e demonstrações financeiras, aceita upload de PDFs processados por IA (Gemini), e consolida tudo num **Supabase (Postgres)**.
+`credit-data-dl`: pipeline de extração/consolidação de dados de **debêntures brasileiras** para análise de crédito corporativo. Semeadura por **ticker** (ex.: PETR26): descobre o emissor (CNPJ via ANBIMA), cruza com CVM, baixa dados de mercado e demonstrações, aceita **upload de PDFs processados por IA (Gemini)**, e consolida tudo num **Supabase (Postgres remoto)**.
 
-Está em **refactoring V2 ("SaaS & API-Ready")** na pasta `scripts_v2/`. O V1 (`scripts/`) é batch local e serve só de referência.
+Em **refactoring V2 ("SaaS & API-Ready")** na pasta `scripts_v2/`. O V1 (`scripts/`) é batch local, só referência.
 
-**Stack:** Python (async), Supabase/Postgres, Google Gemini (`gemini-2.5-flash`), pdfplumber, Playwright, httpx. Futuro front: Next.js. Plataforma: Windows (PowerShell + Bash disponíveis).
+**Stack:** Python async, Supabase/Postgres, Google Gemini (`gemini-2.5-flash`), pdfplumber/pypdf, Playwright, httpx; API FastAPI + uvicorn; Front Next.js 16 (App Router) + React 19 + Tailwind v4 + TypeScript.
 
 ---
 
-## 2. Arquitetura V2 (camadas)
+## 2. Arquitetura (camadas)
 
 ```
-Front (Next.js)  →  API (FastAPI)  →  orquestrador.py  →  serviços de coleta + servico_repositorio.py  →  Supabase
+Front (Next.js, BFF)  →  API (FastAPI)  →  orquestrador.py  →  serviços de coleta + servico_repositorio.py  →  Supabase
 ```
 
-- **Serviços de coleta (puros, prontos):** `servico_identidade.py`, `servico_cvm.py`, `servico_mercado.py`, `servico_ia_quantitativa.py`, `servico_ia_qualitativa.py`. Recebem input, devolvem `dict`/`str`. **Não falam com banco.** PDFs nunca tocam disco — circulam como `bytes` em memória.
-- **`servico_repositorio.py` (pronto):** única camada que conhece o Supabase. **Fronteira de portabilidade** — trocar de banco = reescrever só este módulo. Síncrono.
-- **`orquestrador.py` (pronto, com correção pendente):** maestro. Sequencia serviços, aplica "Peek Before Leap" (dedup), persiste via repositório, atualiza `pipeline_jobs`. Assíncrono.
-- **API FastAPI (PRÓXIMO):** fina, sobre o orquestrador. Cria job, dispara em background, expõe leituras.
-- **`servico_analise_credito.py` (POR ÚLTIMO):** Passo 6, análise de crédito por LLM. **Deixado para o fim de propósito** — o usuário quer primeiro validar que o front→banco alimenta os dados corretamente; ele já tem prompts e estrutura de análise prontos.
+- **Serviços de coleta (puros):** `servico_identidade.py`, `servico_cvm.py`, `servico_mercado.py`, `servico_ia_quantitativa.py`, `servico_ia_qualitativa.py`. Recebem input, devolvem `dict`/`str`. **Não falam com banco.** PDFs nunca tocam disco — circulam como `bytes` em memória.
+- **`servico_repositorio.py`:** **única** camada que conhece o Supabase (fronteira de portabilidade — trocar de banco = reescrever só este módulo). Síncrono; chamado via `asyncio.to_thread`.
+- **`orquestrador.py`:** maestro. Sequencia serviços, faz "Peek Before Leap" (dedup por hash MD5), persiste via repositório, atualiza `pipeline_jobs`. Assíncrono. **Não cria jobs** — a API cria e passa `process_id`.
+- **API FastAPI (`api/`):** fina, sobre o orquestrador. Cria job, dispara em background (`BackgroundTasks`), expõe leituras. Auth por `X-API-Key`.
+- **Front Next.js (`frontend/`):** consome a API via **BFF** — o browser fala só com o Next.js, que injeta o `X-API-Key` server-side. A key **nunca** vai ao browser.
+- **`servico_analise_credito.py` (POR ÚLTIMO):** Passo 6, análise de crédito por LLM. Deixado para o fim de propósito (validar antes que front→API→banco alimenta os dados certos). Usuário já tem prompts/estrutura prontos.
 
 ---
 
@@ -32,124 +35,146 @@ Front (Next.js)  →  API (FastAPI)  →  orquestrador.py  →  serviços de col
 
 | Decisão | Escolha | Porquê |
 |---|---|---|
-| Alvo de curto prazo | **Ferramenta interna mono-operador** | Sem multi-tenant/RLS/coluna de tenant agora. Schema atual serve. Adicionar tenant depois é migração aditiva. |
-| Execução de jobs longos | **FastAPI BackgroundTasks + tabela `pipeline_jobs`** | Pipeline leva minutos (Playwright+CVM+Gemini); request síncrona estoura timeout. API dispara em background, devolve `job_id`, front faz polling. Sem Celery/Redis. |
-| `delta_markdown` da análise | **Gerado por LLM** (compara versão anterior + dados novos) | Diff narrativo capta significância; diff programático não. (Só relevante no Passo 6.) |
-| Portabilidade de banco | **Repositório é a única fronteira**; IDs gerados na app (`uuid.uuid4()`), **nunca** `gen_random_uuid()` | Usuário pode trocar de banco no futuro. |
-| Storage de demonstrações | **Linhas numéricas normalizadas** (não JSON) | Bom para gráficos/SQL. O JSON é só read-model transitório para o LLM (`montar_demonstracoes_estruturadas`). |
-| Pontos de entrada do orquestrador | **Dois separados:** `ingerir_ticker` e `ingerir_documentos` | Resolve chicken-egg (precisa do CNPJ antes de associar PDFs). Mapeia para dois fluxos no front. |
-| Camada deep do mercado | **Desligada por padrão**, opt-in via flag | Calculadora ANBIMA raspa data-a-data (lenta). Light é rápida e suficiente por padrão. |
-| Atomicidade hash+números | **Por ordenação de escrita** (demonstrações antes do manifesto) | Sem transação multi-tabela nem função no banco (preserva portabilidade); idempotência cobre crash no meio. |
+| Alvo de curto prazo | Ferramenta interna **mono-operador** | Sem multi-tenant/RLS agora; adicionar depois é migração aditiva. |
+| Jobs longos | **BackgroundTasks + `pipeline_jobs`** (polling) | Pipeline leva minutos; request síncrona estouraria timeout. Sem Celery/Redis. |
+| Portabilidade de banco | **Repositório é a única fronteira**; IDs gerados na app (`uuid.uuid4()`), nunca `gen_random_uuid()` | Permite trocar de banco. |
+| Storage de demonstrações | **Linhas numéricas normalizadas** (não JSON) | Bom p/ gráficos/SQL. JSON é só read-model transitório p/ o LLM. |
+| Pontos de entrada | **Dois:** `ingerir_ticker` e `ingerir_documentos` | Resolve chicken-egg (CNPJ antes dos PDFs). |
+| Camada deep do mercado | **Desligada por padrão**, opt-in via flag | Calculadora ANBIMA raspa data-a-data (lenta). |
+| Front → API | **BFF** (key só server-side) | Segredo nunca no browser; sem CORS no caminho normal; à prova de futuro fora do localhost. |
+| `delta_markdown` (Passo 6) | **Gerado por LLM** | Diff narrativo capta significância. |
 
 ---
 
 ## 4. Schema (Supabase) — `scripts_v2/sql/supabase_schema_v2.sql`
 
-Script **DROP + CREATE completo e idempotente**. Tabelas: `emissores`, `demonstracoes_financeiras`, `deb_caracteristicas`, `deb_agenda`, `deb_historico_diario`, `emissor_compendio_qualitativo`, `emissor_compendio_quantitativo`, `emissor_analise_credito`, `pipeline_jobs`. Views: `v_ultimo_periodo`, `v_portfolio_ativo`, `v_proximos_pagamentos`, `v_ultima_analise_credito`, `v_emissor_debentures`, `v_jobs_recentes`.
+Script **DROP + CREATE completo** (apaga dados). Tabelas: `emissores`, `demonstracoes_financeiras`, `deb_caracteristicas`, `deb_agenda`, `deb_historico_diario`, `emissor_compendio_qualitativo`, `emissor_compendio_quantitativo`, `emissor_analise_credito`, `pipeline_jobs`. Views: `v_ultimo_periodo`, `v_portfolio_ativo`, `v_proximos_pagamentos`, `v_ultima_analise_credito`, `v_emissor_debentures`, `v_jobs_recentes`.
 
-**Gotchas importantes:**
-- `deb_agenda` UNIQUE = `NULLS NOT DISTINCT (ticker_deb, data_evento, evento, data_base)` — 4 colunas (V1 tinha 3). O `on_conflict` do repositório reflete isso.
+**Gotchas:**
+- `deb_agenda` UNIQUE = `NULLS NOT DISTINCT (ticker_deb, data_evento, evento, data_base)` (4 colunas).
 - `emissor_compendio_qualitativo`: 1 linha por PDF (`markdown_conteudo`), UNIQUE `(cnpj, hash_md5)`.
-- `emissor_compendio_quantitativo`: só manifesto (hashes); os números vão para `demonstracoes_financeiras`.
-- `emissor_analise_credito`: **insert-only** (versionado, sem UNIQUE); `metadados` jsonb guarda `tickers_deb` etc.
-- `pipeline_jobs`: `id text` = UUID gerado na app; `tipo` ∈ `ingestao|analise`; `status` text livre (sem CHECK) — valores: `pendente | rodando | concluido | concluido_com_erros | erro`; `etapa_atual`, `progresso` jsonb, `erro`.
-- IDs das demais tabelas: `bigint GENERATED ALWAYS AS IDENTITY`.
+- `emissor_compendio_quantitativo`: só manifesto (nome+hash); os números vão p/ `demonstracoes_financeiras`.
+- `emissor_analise_credito`: **insert-only** (versionado, sem UNIQUE).
+- `pipeline_jobs`: `id text` (UUID da app); `status` text livre (`pendente | rodando | concluido | concluido_com_erros | erro`); `etapa_atual`, `progresso` jsonb, `erro`. (No código, jobs são tratados como "processos"; `tipo="cadastro"`.)
+- **Migração pendente (plano de títulos):** adicionar `titulo text` em `emissor_compendio_qualitativo` e `emissor_compendio_quantitativo` (ver §8c).
 
 ---
 
-## 5. Contratos exatos (referência canônica)
+## 5. API FastAPI (`api/`) — PRONTA e validada
 
-### Serviços de coleta
+Camada fina sobre o orquestrador. Base `http://localhost:8000`; auth header `X-API-Key` (`/health` público). Arquivos: `api/{config,seguranca,esquemas,rotas_cadastro,rotas_leitura,main}.py`. `main.py` aplica `WindowsProactorEventLoopPolicy` (Playwright no Windows) e monta os routers com `Depends(exigir_api_key)`.
 
-**Assíncronos (`await`):**
-- `servico_identidade.buscar_identidade_emissor(ticker)` → `{"ticker","nome_emissor","cnpj_emissor"(só dígitos),"cod_cvm"|None,"categoria_cvm"|None,"tipo_capital":"Aberto"|"Fechado","status":"SUCESSO"|"ERRO"|...}`
-- `servico_cvm.buscar_dados_cvm(cnpj, codigo_cvm, anos_retroativos=2)` → `{"cnpj","cod_cvm","periodos":{...}}`
-- `servico_mercado.buscar_dados_mercado(ticker, deep=False, data_corte_deep=None, datas_desconhecidas=None)` → `{"ticker_deb","caracteristicas":{...sem cnpj/ticker...},"agenda":[...],"historico_diario":[...]}`
+> ⚠️ **Atenção:** os endpoints foram **renomeados** de `/ingest/*` para `/cadastro/*` e as leituras foram **muito expandidas** desde o HANDOVER antigo. Lista canônica abaixo.
 
-**Síncronos (via `asyncio.to_thread`):**
-- `servico_ia_quantitativa.extrair_dados_quantitativos(cnpj, arquivos, periodos_existentes_db=None)` → `{"cnpj","periodos":{...},"processed_files":[{"nome_arquivo","hash_md5"}]}`. Auto-filtra não-financeiros.
-- `servico_ia_qualitativa.extrair_dados_qualitativos(cnpj, arquivos, markdown_existente="", incluir_frontmatter=True)` → **string markdown**. NÃO filtra. Com `incluir_frontmatter=False` + 1 arquivo → só o corpo daquele arquivo.
+**Escrita (retornam `202` + `{process_id}`):**
+- `POST /cadastro/ticker` — JSON `{ticker, deep?, data_corte_deep?}` → `repo.criar_processo("cadastro", ticker)` → background → `orquestrador.ingerir_ticker(..., process_id=...)`.
+- `POST /cadastro/documentos` — multipart `cnpj` + `arquivos` (lê `UploadFile`→`bytes` em memória) → `repo.criar_processo("cadastro", cnpj)` → background → `ingerir_documentos(...)`.
 
-`arquivos` = `list[tuple[str, bytes]]` = `(nome, conteudo_pdf)`. `periodos` (CVM e quant) têm formato **idêntico**: `{"YYYY-MM-DD":{"tipo":"DFP"|"ITR","demonstracoes":{"BPA":{"1":{"cd_conta","ds_conta","valor"}},"BPP","DRE","DFC","DVA"}}}`.
+**Leitura (em `rotas_leitura.py`):**
+- `GET /processos` → `listar_processos_recentes` (view `v_jobs_recentes`); `GET /processos/{id}` (404 se inexistente).
+- `GET /portfolio` (`v_portfolio_ativo`); `GET /agenda-eventos` (`v_proximos_pagamentos`).
+- `GET /ativos?identificador=&resumo=` — resolve ticker/CNPJ/ticker_ação; `resumo=1` evita baixar agenda+histórico (caminho leve p/ dropdowns); usa `historico_limit`.
+- `GET /ativos/opcoes?q=&limit=` — autocomplete (combobox).
+- `GET /ativos/{ticker}/historico?offset=&limit=` — histórico diário paginado.
+- `GET /emissores/resolver/{identificador}`; `GET /emissores/{cnpj}` → `{emissor, debentures}`; `GET /emissores/{cnpj}/visao-completa` → dossiê (emissor + debêntures + demonstrações + estruturadas + manifesto quant + **markdowns** + última análise).
 
-### `servico_repositorio.py` (síncrono — chamar via `to_thread`)
-Leitura: `buscar_emissor(cnpj)`, `buscar_hashes_qualitativo(cnpj)→set`, `buscar_hashes_quantitativo(cnpj)→set`, `buscar_periodos_demonstracoes(cnpj)→set`, `buscar_datas_historico(ticker)→set`, `buscar_ultima_analise(cnpj)→dict|None`, `montar_demonstracoes_estruturadas(cnpj)→dict`.
-Escrita: `salvar_emissor(identidade)`, `salvar_caracteristicas(cnpj,ticker,carac)`, `salvar_agenda(cnpj,ticker,agenda)→int`, `salvar_historico(ticker,hist)→int`, `periodos_para_linhas(cnpj,resultado)→list`, `salvar_demonstracoes(linhas)→int`, `salvar_compendio_qualitativo(cnpj,nome,hash,markdown,force=False)`, `salvar_compendio_quantitativo(cnpj,nome,hash,force=False)`, `salvar_analise_credito(cnpj,analise_md,delta_md,metadados)`.
-Jobs: `criar_job(tipo,alvo)→job_id`, `atualizar_job(job_id,*,status=,etapa_atual=,progresso=,erro=)`, `buscar_job(job_id)→dict|None`.
-Helpers expostos: `normaliza_cnpj(cnpj)`. Conexão: `_get_client()` lazy singleton; carrega `.env.local` depois `.env`; exige `SUPABASE_URL` + `SUPABASE_KEY` (service_role).
-
-### `orquestrador.py` (assíncrono)
-- `ingerir_ticker(ticker, *, deep=False, data_corte_deep=None, job_id=None) → dict` — P1 identidade → P2 CVM (só se `cod_cvm`) → P3 mercado. Retorna `{ticker,cnpj,tipo_capital,periodos_cvm,eventos_agenda,dias_historico,erros}`.
-- `ingerir_documentos(cnpj, arquivos, *, force=False, job_id=None) → dict` — valida emissor existe → peek hashes → pré-filtra por md5 → P4a quant (demonstrações antes do manifesto) → P4b qual (1 arquivo por vez). Retorna `{cnpj,quant_processados,qual_processados,pulados_quant,pulados_qual,erros}`.
-- **Não cria jobs** — só atualiza. A API cria o job e passa `job_id`.
-- Roteamento de PDFs: a **mesma lista** vai para os dois serviços de IA; cada um se auto-seleciona; dedup independente por tabela de compêndio.
+**Limitação conhecida:** BackgroundTasks é in-process — reinício no meio deixa o job `rodando` (ok p/ mono-operador local).
 
 ---
 
-## 6. Estado atual (o que está feito / pendente)
+## 6. `servico_repositorio.py` — referência (síncrono; chamar via `to_thread`)
 
-- ✅ Schema V2 finalizado (com `pipeline_jobs` + `v_jobs_recentes`). **Precisa ter sido rodado no Supabase.**
-- ✅ Os 5 serviços de coleta prontos (incluindo ajustes V2: `incluir_frontmatter` no qualitativo, `periodos_existentes_db` no quantitativo).
-- ✅ `servico_repositorio.py` implementado pelo Codex e **revisado** — fiel ao plano, on_conflict corretos, smoke test ok.
-- ✅ `orquestrador.py` implementado pelo Codex e **revisado** — fiel ao plano.
-- ✅ Correção do orquestrador (`correcao-orquestrador-jobs.md`) **aplicada e confirmada** (2026-06-15): try/except de borda nos dois pontos de entrada, status `concluido_com_erros`, comentário do schema e premissa em `montar_demonstracoes`. As 4 mudanças verificadas no código.
-- ✅ Plano da API FastAPI escrito em `.claude/plans/api-fastapi.md` (autocontido p/ Codex). Decisões travadas: auth por API key (`X-API-Key`); deploy a decidir (rodar local, BackgroundTasks in-process); pasta `api/` na raiz; job tipo `ingestao` com `alvo=cnpj` p/ documentos. Inclui helpers de leitura a adicionar no repositório (views).
-- 🔜 **PRÓXIMO:** delegar o plano da API ao Codex e revisar a implementação. Depois: front Next.js e, por último, `servico_analise_credito.py` (Passo 6).
+Funções de **processos/jobs** (renomeadas de job→processo): `criar_processo(tipo, alvo)→id`, `atualizar_processo(id,*,status=,etapa_atual=,progresso=,erro=)`, `buscar_processo(id)→dict|None`, `listar_processos_recentes()`.
 
-**Gap revisado (motivo da correção pendente):** exceções inesperadas (ex.: `salvar_emissor` lança `ValueError` se `nome_emissor` vazio; chamada não protegida em `ingerir_ticker`) deixavam o job preso em `rodando`, quebrando o modelo de polling.
+**Leitura:** `buscar_emissor`, `buscar_hashes_qualitativo/quantitativo(cnpj)→set`, `buscar_periodos_demonstracoes`, `buscar_datas_historico`, `buscar_ultima_analise`, `montar_demonstracoes_estruturadas(cnpj,*,rows=,emissor=)`, `listar_demonstracoes_financeiras`, `listar_compendios_qualitativos`, `listar_compendios_quantitativos`, `listar_detalhes_ativos(cnpj=None,*,incluir_series=True,historico_limit=)`, `montar_detalhe_ativo(ticker,*,historico_limit=)`, `buscar_ativo_por_ticker`, `buscar_opcoes_ativo_emissor(q,*,limit=)`, `listar_historico_ativo_paginado(ticker,*,offset=,limit=)`, `resolver_emissor_por_identificador`, `montar_visao_completa_emissor`, `listar_portfolio`, `listar_agenda_eventos`, `listar_debentures_emissor`.
+
+**Escrita:** `salvar_emissor`, `salvar_caracteristicas`, `salvar_agenda`, `salvar_historico`, `periodos_para_linhas`, `salvar_demonstracoes`, `salvar_compendio_qualitativo(cnpj,nome,hash,markdown,force=False)`, `salvar_compendio_quantitativo(cnpj,nome,hash,force=False)`, `salvar_analise_credito`.
+
+**Performance (já aplicada):** `listar_detalhes_ativos` reescrita p/ batching com `.in_(...)` (4 queries fixas, não 1+3N); `montar_visao_completa_emissor` paraleliza leituras independentes com `ThreadPoolExecutor` (supabase-py httpx é thread-safe) e reaproveita linhas; `IN_FILTER_SIZE`/`_chunks` helpers. Conexão: `_get_client()` lazy singleton; carrega `.env.local` e `.env`; exige `SUPABASE_URL` + `SUPABASE_KEY` (service_role).
 
 ---
 
-## 7. PRÓXIMO PASSO — API FastAPI (meu plano mental, a refinar com o usuário)
+## 7. Front Next.js (`frontend/`) — FUNCIONAL
 
-Camada **fina** sobre o orquestrador. Desenho proposto:
+App Router + TS + Tailwind v4 + React 19. **BFF**: `frontend/lib/api.ts` (`import "server-only"`) é a única fronteira com a key; `apiGet(path, {revalidate?})` usa Data Cache quando `revalidate` é setado, senão `cache:"no-store"`. Env: `frontend/.env.local` com `API_BASE_URL=http://localhost:8000` + `API_KEY=` (= a da API). `.env*` gitignored.
 
-**Endpoints de escrita (disparam pipeline):**
-- `POST /ingest/ticker` (body: `{ticker, deep?, data_corte_deep?}`) → `repo.criar_job("ingestao", ticker)` → `BackgroundTasks` → `ingerir_ticker(..., job_id=...)` → retorna `{job_id}` na hora.
-- `POST /ingest/documentos` (multipart: `cnpj` + arquivos) → ler `UploadFile` para `bytes` em memória (`await file.read()`, nunca disco) → `repo.criar_job("ingestao", cnpj)` → `BackgroundTasks` → `ingerir_documentos(cnpj, arquivos, job_id=...)` → `{job_id}`.
+**Rotas reais** (≠ do HANDOVER antigo, que listava `/pagamentos`,`/emissores`,`/jobs`):
+- `/` — Visão Geral / portfólio (`force-dynamic` p/ não pré-renderizar no build sem API).
+- `/detalhe-ativo` — exige seleção via `AssetSelectorCombobox` (autocomplete `/ativos/opcoes`); histórico paginado.
+- `/detalhe-emissor` (busca) e `/detalhe-emissor/[identificador]` — dossiê via `/visao-completa`.
+- `/cadastro-dados` — forms de ticker e documentos + monitor de processo (polling) + processos recentes.
+- Route Handlers (BFF): `app/api/processos/[id]`, `app/api/cadastro/documentos`, `app/api/detalhe-ativo/[ticker]/historico`, `app/api/detalhe-ativo/opcoes`. Escrita de ticker via Server Action (`app/cadastro-dados/actions.ts`).
 
-**Endpoints de leitura (polling + dados):**
-- `GET /jobs/{job_id}` → `repo.buscar_job`. `GET /jobs` → `v_jobs_recentes`.
-- `GET /portfolio` → `v_portfolio_ativo`; `GET /proximos-pagamentos` → `v_proximos_pagamentos`; `GET /emissores/{cnpj}` → emissor + `v_emissor_debentures`.
+**Bugs já corrigidos:** `redirect()` fora do try/catch (NEXT_REDIRECT); escopo de `cnpj` no upload; `formatPercent`; `error.tsx`.
 
-**Detalhes técnicos:**
-- BackgroundTasks aceita funções async — roda o orquestrador no event loop. Após o fix, exceções já marcam o job `erro`, então o front vê pela polling mesmo que o endpoint já tenha retornado.
-- Config: carregar `.env.local`/`.env` (SUPABASE + GEMINI). CORS para o Next.js.
-- O front nunca segura a service_role key — só fala com a API. (Por isso leituras via API, não Supabase direto.)
-
-**Decisões a resolver com o usuário antes de finalizar o plano da API (perguntar):**
-1. **Autenticação:** nenhuma (local), uma API key única no header (mono-operador), ou Supabase Auth? (Recomendação provável: API key única — mono-operador.)
-2. **Deploy/hospedagem:** onde a API Python vai rodar? (Vercel não roda Python facilmente; opções: Railway/Render/Fly/local.) Afeta a viabilidade de BackgroundTasks (são in-process: se o processo reinicia no meio, o job fica `rodando`; aceitável para ferramenta local/mono-operador — anotar como limitação conhecida).
-3. **Estrutura de pastas da API:** dentro de `scripts_v2/` (ex.: `scripts_v2/api/`) ou um novo módulo/pasta (`api/`, `backend/`)? Confirmar convenção.
-4. **`tipo` do job para documentos:** o schema só permite `ingestao|analise`. Documentos é parte de `ingestao` (alvo=cnpj). Confirmar se quer um `tipo` distinto (exigiria ampliar o schema).
+**Tema da marca (em andamento):** `globals.css` já migrado p/ tokens BOCAINA (verde `#0a2300` / cream `#fff0dc`, chrome verde, tons semânticos, sombras esverdeadas, raios); `layout.tsx` usa **Gotham** local (`next/font/local`) + header verde com logo. Ver §8a. ⚠️ O header referencia `/brand/bocaina-logo-cream.png` — **garantir que o asset exista em `frontend/public/brand/`** (idealmente SVG).
 
 ---
 
-## 8. Convenções do projeto (importante manter)
+## 8. Planos ativos em `.claude/plans/` (backlog atual)
 
-- **Planos/artefatos de delegação vão em `.claude/plans/<nome-descritivo>.md`** no projeto (versionados no Git — `.claude/` NÃO está no `.gitignore`). Nome descritivo, não o slug do harness. Links relativos (`../../`) para arquivos do repo. Já existem: `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, e este `HANDOVER.md`.
-- **Chaves de ambiente:** serviços V2 carregam `.env.local` (GEMINI_API_KEY); repositório carrega `.env.local` e `.env` (SUPABASE_URL, SUPABASE_KEY service_role). `.env*` está no `.gitignore`.
-- O usuário **delega implementação a agentes Codex**; minha entrega são planos/prompts autocontidos (assumir que o executor não tem o histórico desta conversa).
-- Idioma: **português (pt-BR)**.
+### 8a. `front-estilo-bocaina.md` — redesign visual p/ a marca BOCAINA (EM ANDAMENTO pelo Codex)
+Tema **claro + cromo verde**; **só Gotham** (sem serifada New York); **só logo+pássaro** (sem padronagens/22,5°). Tokens já no `globals.css`; falta varrer componentes (sombras, raios, glass removido, `text-white`→cream, `text-rose`→`--danger`), nav e assets de logo. Inspiração: site oficial https://bocainacapital.com/. Decisões salvas na memória `marca-bocaina.md`.
+
+### 8b. `markdown-todos-pdfs.md` — todo PDF vira markdown salvo e visível ✅ IMPLEMENTADO E VERIFICADO (nesta conversa)
+A trilha qualitativa já transcreve qualquer PDF em markdown; o bug era **descartar** quando o LLM retornava vazio. Implementado: `extrair_markdown_pdf()` (LLM +1 retry → texto bruto → placeholder; nunca vazio); orquestrador **sempre salva** (contadores `qual_fallback`/`qual_sem_conteudo`, sem descarte); repositório marca `financeiro` no item de markdown cruzando hashes do manifesto quant; front mostra selo "financeiro". **Verificado:** AST parse + `tsc` OK; falta só o teste end-to-end com PDFs reais. Recuperar antigos = reenviar (forward-only; bytes originais não são guardados).
+
+### 8c. `titulos-descritivos-documentos.md` — título descritivo por documento (PLANEJADO, não implementado)
+`nome_arquivo` (UUID) vira só referência interna; gerar título via LLM sobre o markdown ("ITR Mar2026", "Escritura 2ª Emissão VPLT"…). **Forward-only**; título gravado **nas duas tabelas** (qual+quant). Requer **ALTER TABLE … ADD COLUMN titulo text** (qual+quant), nova `gerar_titulo_documento()`, `definir_titulo_quantitativo()`, ajuste em `montar_visao_completa_emissor` e no front (`QuantitativeManifest.titulo` + coluna do manifesto). `MarkdownDocument.titulo` já existe.
+
+### 8d. `fix-nav-contraste.md` — abas inativas verde-no-verde (PLANEJADO)
+Diagnóstico: o `app-nav.tsx` **já usa texto cream nos inativos** (correto) → o sintoma é **build/cache defasado**. Plano: (1) apagar `frontend/.next` + restart dev (provável causa real); (2) blindar com tokens `--chrome-item-*` e a regra "inativo ⇒ texto `--chrome-ink` cream; nunca verde".
+
+> Planos legados (já entregues): `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, `api-fastapi.md`, `front-nextjs.md`.
+
+---
+
+## 9. Fluxo de processamento de um PDF (resumo de referência)
+
+`POST /cadastro/documentos` → lê bytes → `criar_processo` (pendente) → 202 → background `ingerir_documentos`:
+1. `validacao_emissor` (emissor precisa existir; senão job=`erro`).
+2. `peek_hashes` (dedup por MD5, por trilha).
+3. `ia_quant` — só arquivos financeiros (heurística de nome): Gemini→JSON CVM → `demonstracoes_financeiras` + manifesto quant.
+4. `ia_qual` — **todos** os arquivos: Gemini→markdown fiel (modo Texto por lotes, fallback Vision); agora **sempre salva** (texto bruto/placeholder se falhar).
+5. `finalizado` → `concluido` | `concluido_com_erros`.
+
+Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotência por hash, por trilha. Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
 
 ---
 
-## 9. Memória do projeto (auto-carregada na próxima sessão)
+## 10. Convenções do projeto
 
-Arquivos em `.../memory/`: `v2-arch-decisions.md` (decisões travadas), `convencao-planos.md` (onde salvar planos). Índice em `MEMORY.md`. Vale criar uma memória nova quando a API for decidida.
+- **Planos em `.claude/plans/<nome-descritivo>.md`** (versionados no Git; `.claude/` não está no `.gitignore`). Links relativos. Assumir que o executor (Codex) não tem o histórico.
+- **Memória** em `…/memory/`: `v2-arch-decisions.md`, `convencao-planos.md`, `api-fastapi-decisions.md`, `marca-bocaina.md`. Índice em `MEMORY.md`.
+- **Env:** serviços carregam `.env.local` (GEMINI_API_KEY); repositório carrega `.env.local`+`.env` (SUPABASE_URL, SUPABASE_KEY service_role); API usa `API_KEY` (+ opcional `CORS_ORIGINS`); front `API_BASE_URL`+`API_KEY`. Tudo gitignored.
+- Idioma **pt-BR**. Usuário **delega a Codex**; eu entrego planos. **Não revertam** mudanças que o Codex já fez em paralelo (verificar antes).
+
+---
+
+## 11. Como rodar / verificar
+
+- Schema: rodar `scripts_v2/sql/supabase_schema_v2.sql` no SQL Editor do Supabase (DROP+CREATE). Migração de títulos (§8c): `ALTER TABLE … ADD COLUMN IF NOT EXISTS titulo text`.
+- Orquestrador CLI: `python scripts_v2/orquestrador.py ticker PETR26` | `… docs <CNPJ> <pasta_pdfs>`.
+- API: na raiz, `uvicorn api.main:app --port 8000` (precisa `.env.local`/`.env` com SUPABASE+GEMINI+`API_KEY`). Docs em `/docs`.
+- Front: em `frontend/`, `npm run dev` (3000) ou `npm run build && npm run start`. `tsc`: `./node_modules/.bin/tsc --noEmit` (rodar de dentro de `frontend/`). Se o estilo "não pega": apagar `frontend/.next` e reiniciar.
+- Validar: idempotência (rodar 2× não duplica); empresa Fechada (sem cod_cvm → CVM pulado sem quebrar); `API_KEY` não vaza no bundle do browser (devtools); chamadas do browser só p/ `:3000`.
 
 ---
 
-## 10. Como rodar / verificar (referência rápida)
+## 12. Histórico desta conversa (o que rolou)
 
-- Schema: rodar `scripts_v2/sql/supabase_schema_v2.sql` no SQL Editor do Supabase (DROP+CREATE — apaga dados).
-- Smoke test repositório: `python scripts_v2/servico_repositorio.py` (precisa de `.env.local`/`.env` com chaves Supabase).
-- Orquestrador CLI: `python scripts_v2/orquestrador.py ticker PETR26` | `python scripts_v2/orquestrador.py docs <CNPJ> <pasta_pdfs>`.
-- Testar idempotência (rodar 2×, nada duplica) e empresa Fechada (sem cod_cvm → CVM pulado sem quebrar).
+Ordem cronológica do que foi feito/decidido nesta sessão (para continuidade):
 
----
+1. **Performance do front** diagnosticada e corrigida: N+1 em `/ativos` (batching), dossiê paralelizado (`ThreadPoolExecutor`), Data Cache (`revalidate`) no front, caminho `resumo=1`, `force-dynamic` em `/`. (Codex estendeu com histórico paginado, `/ativos/opcoes` e `AssetSelectorCombobox`.)
+2. **Plano de estilo BOCAINA** (`front-estilo-bocaina.md`): revisei o front inteiro, li o Guia de Identidade (PDF) e o site oficial; decisões do dono: claro+cromo verde, só Gotham, só logo/pássaro. Memória `marca-bocaina.md` criada. Codex começou a aplicar (tokens já no `globals.css`/`layout.tsx`).
+3. **Plano "markdown p/ todos os PDFs"** (`markdown-todos-pdfs.md`) — **implementado pelo Codex e verificado por mim** (extrair_markdown_pdf, sempre salvar, selo financeiro). Constatação-chave: a trilha qualitativa já é um transcritor genérico; o bug era o descarte por markdown vazio.
+4. **Explicações** detalhadas do fluxo da API e de todas as etapas/desfechos por arquivo (a pedido do usuário).
+5. **Plano de títulos descritivos** (`titulos-descritivos-documentos.md`): nome do arquivo só p/ referência interna; título por LLM; forward-only; nas duas tabelas. (Planejado, não implementado.)
+6. **Plano de fix do menu** (`fix-nav-contraste.md`): abas inativas verde-no-verde — a fonte já está correta; causa provável = build defasado; blindar com tokens de chrome.
+7. **Este HANDOVER** reescrito do zero refletindo o estado atual.
 
 ### Primeira ação sugerida na próxima conversa
-1. Confirmar se a correção do orquestrador (`correcao-orquestrador-jobs.md`) foi aplicada pelo Codex.
-2. Fazer as 4 perguntas da seção 7 ao usuário.
-3. Escrever o plano autocontido da API em `.claude/plans/api-fastapi.md`.
+1. Confirmar com o Codex o andamento de `front-estilo-bocaina.md` (8a) e `fix-nav-contraste.md` (8d); verificar o asset do logo em `frontend/public/brand/`.
+2. Rodar o **teste end-to-end** do `markdown-todos-pdfs` (reenviar um PDF financeiro + um escaneado; conferir lista de Markdowns e selo "financeiro").
+3. Encaminhar `titulos-descritivos-documentos.md` (8c) p/ implementação (lembrar do ALTER TABLE).
+4. Só então: planejar/implementar o **Passo 6** (`servico_analise_credito.py`).

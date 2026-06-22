@@ -2,79 +2,79 @@ import asyncio
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, status
 
-from api.esquemas import IngestTickerRequest, JobCriadoResponse
+from api.esquemas import CadastroTickerRequest, ProcessoCriadoResponse
 from scripts_v2 import orquestrador, servico_repositorio as repo
 
-router = APIRouter(prefix="/ingest", tags=["ingestao"])
+router = APIRouter(prefix="/cadastro", tags=["cadastro"])
 
 
-def _executar_ingestao_ticker_background(
+def _executar_cadastro_ticker_background(
     ticker: str,
     *,
     deep: bool,
     data_corte_deep: str | None,
-    job_id: str,
+    process_id: str,
 ) -> None:
     asyncio.run(
         orquestrador.ingerir_ticker(
             ticker,
             deep=deep,
             data_corte_deep=data_corte_deep,
-            job_id=job_id,
+            process_id=process_id,
         )
     )
 
 
-def _executar_ingestao_documentos_background(
+def _executar_cadastro_documentos_background(
     cnpj: str,
     arquivos: list[tuple[str, bytes]],
     *,
-    job_id: str,
+    process_id: str,
 ) -> None:
     asyncio.run(
         orquestrador.ingerir_documentos(
             cnpj,
             arquivos,
             force=False,
-            job_id=job_id,
+            process_id=process_id,
         )
     )
 
 
 @router.post(
     "/ticker",
-    response_model=JobCriadoResponse,
+    response_model=ProcessoCriadoResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def ingest_ticker(
-    req: IngestTickerRequest,
+async def cadastrar_ticker(
+    req: CadastroTickerRequest,
     background: BackgroundTasks,
-) -> JobCriadoResponse:
+) -> ProcessoCriadoResponse:
     ticker = req.ticker.strip().upper()
     if not ticker:
         raise HTTPException(status_code=400, detail="Ticker invalido.")
 
-    job_id = await asyncio.to_thread(repo.criar_job, "ingestao", ticker)
+    process_id = await asyncio.to_thread(repo.criar_processo, "cadastro", ticker)
     background.add_task(
-        _executar_ingestao_ticker_background,
+        _executar_cadastro_ticker_background,
         ticker,
         deep=req.deep,
         data_corte_deep=req.data_corte_deep,
-        job_id=job_id,
+        process_id=process_id,
     )
-    return JobCriadoResponse(job_id=job_id)
+    return ProcessoCriadoResponse(process_id=process_id)
 
 
 @router.post(
     "/documentos",
-    response_model=JobCriadoResponse,
+    response_model=ProcessoCriadoResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def ingest_documentos(
+async def cadastrar_documentos(
     background: BackgroundTasks,
     cnpj: str = Form(...),
     arquivos: list[UploadFile] = File(...),
-) -> JobCriadoResponse:
+) -> ProcessoCriadoResponse:
     if not arquivos:
         raise HTTPException(status_code=400, detail="Nenhum arquivo enviado.")
 
@@ -93,11 +93,11 @@ async def ingest_documentos(
     if not cnpj_norm:
         raise HTTPException(status_code=400, detail="CNPJ invalido.")
 
-    job_id = await asyncio.to_thread(repo.criar_job, "ingestao", cnpj_norm)
+    process_id = await asyncio.to_thread(repo.criar_processo, "cadastro", cnpj_norm)
     background.add_task(
-        _executar_ingestao_documentos_background,
+        _executar_cadastro_documentos_background,
         cnpj_norm,
         em_memoria,
-        job_id=job_id,
+        process_id=process_id,
     )
-    return JobCriadoResponse(job_id=job_id)
+    return ProcessoCriadoResponse(process_id=process_id)

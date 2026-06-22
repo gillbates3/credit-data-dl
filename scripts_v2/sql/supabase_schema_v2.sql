@@ -242,6 +242,7 @@ CREATE TABLE public.emissor_compendio_qualitativo (
     cnpj              text NOT NULL REFERENCES public.emissores(cnpj),
     nome_arquivo      text NOT NULL,
     hash_md5          text NOT NULL,
+    titulo            text,
     markdown_conteudo text NOT NULL,
     criado_em         timestamptz DEFAULT now(),
 
@@ -263,6 +264,7 @@ CREATE TABLE public.emissor_compendio_quantitativo (
     cnpj         text NOT NULL REFERENCES public.emissores(cnpj),
     nome_arquivo text NOT NULL,
     hash_md5     text NOT NULL,
+    titulo       text,
     criado_em    timestamptz DEFAULT now(),
 
     CONSTRAINT uq_quantitativo_cnpj_hash UNIQUE (cnpj, hash_md5)

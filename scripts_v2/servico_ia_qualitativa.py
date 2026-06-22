@@ -24,6 +24,8 @@ Funções/Procedimentos:
 - call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None: Upload de um PDF (fatia) e chamada Vision.
 - processar_pdf_vision_por_lotes(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes, pages_per_chunk: int) -> str | None: Fatia o PDF escaneado em grupos de páginas e processa cada fatia via Vision, concatenando os Markdowns parciais.
 - montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str: Formata e sanitiza o bloco Markdown correspondente ao arquivo processado.
+- _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None: Executa o fluxo atual de extracao por arquivo (texto por lotes com fallback vision) e retorna o bloco markdown final.
+- extrair_markdown_pdf(cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> tuple[str, str]: Extrai markdown de um unico PDF com fallback garantido para texto bruto ou placeholder.
 - extrair_dados_qualitativos(cnpj: str, arquivos_em_memoria: list[tuple[str, bytes]], markdown_existente: str = "") -> str: Orquestrador principal da extração qualitativa incremental. Quando incluir_frontmatter=False, retorna apenas o corpo Markdown sem o header YAML.
 - carregar_arquivos_em_memoria(pasta_base: Path) -> list[tuple[str, bytes]]: Lê PDFs locais salvando-os em buffers na memória RAM.
 """
@@ -88,10 +90,58 @@ FORMATO DE SAÍDA:
 - Para dados tabulares, use blocos textuais estruturados, listas e subtópicos.
 """.strip()
 
+PROMPT_TITULO = """
+Você gera títulos descritivos para documentos corporativos em pt-BR.
+
+Retorne somente uma linha, sem aspas, sem markdown e sem extensão de arquivo.
+O título deve ser conciso, preferencialmente com até 60 caracteres.
+Use o padrão:
+<Tipo do documento> [<emissão/série/identificador, se houver>] <Período abreviado>
+
+Regras:
+- Priorize termos como ITR, DFP, Demonstrações Financeiras, Escritura, Rating e Release de Resultados quando o conteúdo indicar isso.
+- O período abreviado deve ser algo como Dez2025, Mar2026, 3T2025 ou outro intervalo curto claramente suportado pelo conteúdo.
+- Inclua emissão, série ou identificador somente se estiver explícito e for útil.
+- Não invente dados ausentes ou incertos.
+- Se a confiança for baixa, retorne um título neutro como Documento <data se houver>.
+""".strip()
+
 
 def log_status(mensagem: str) -> None:
     agora = time.strftime("%H:%M:%S")
     print(f"[{agora}] {mensagem}")
+
+
+def gerar_titulo_documento(cnpj: str, nome_arquivo: str, markdown: str) -> str:
+    """Gera um título descritivo a partir do conteúdo do documento."""
+    fallback = Path(nome_arquivo).stem or nome_arquivo or "Documento"
+    trecho = (markdown or "").strip()[:6000]
+    if not trecho:
+        return fallback
+
+    prompt = (
+        f"{PROMPT_TITULO}\n\n"
+        f"CNPJ: {cnpj}\n"
+        f"Arquivo: {nome_arquivo}\n\n"
+        f"Conteúdo (início):\n{trecho}"
+    )
+    try:
+        response = CLIENT.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.0),
+        )
+        bruto = (response.text or "").strip()
+        titulo = (
+            bruto.splitlines()[0].strip().strip('"').strip("'").strip("#").strip()
+            if bruto
+            else ""
+        )
+        titulo = re.sub(r"\s+", " ", titulo).strip()
+        return titulo[:80] if titulo else fallback
+    except Exception as e:
+        log_status(f"[titulo] Falha ao gerar título para {nome_arquivo}: {e}. Usando fallback.")
+        return fallback
 
 
 def calcular_md5(conteudo_em_bytes: bytes) -> str:
@@ -441,6 +491,80 @@ def montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str:
     return f"\n\n# {nome_arquivo}\n\n{conteudo}\n"
 
 
+def _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None:
+    markdown_pdf = None
+
+    try:
+        with pdfplumber.open(io.BytesIO(conteudo_em_bytes)) as pdf:
+            pages = pdf.pages
+            total_pages = len(pages)
+            pages_with_text = 0
+            for page in pages:
+                text = (page.extract_text() or "").strip()
+                if len(text) >= MIN_TEXT_CHARS_PER_PAGE:
+                    pages_with_text += 1
+            is_scanned = total_pages > 0 and pages_with_text < (total_pages * 0.1)
+
+            if total_pages > 0 and not is_scanned:
+                log_status(
+                    f"    [LLM] PDF com {total_pages} paginas. Usando modo Texto por Lotes para {nome_arquivo}."
+                )
+                markdown_pdf = processar_pdf_texto_por_lotes(
+                    config,
+                    cnpj,
+                    nome_arquivo,
+                    pages,
+                    pages_per_chunk=8,
+                )
+    except Exception as e:
+        print(f"    [pdfplumber] Erro ao abrir {nome_arquivo}: {e}")
+
+    if not markdown_pdf:
+        log_status(
+            f"    [LLM] PDF sem texto util ou falha no lote. Iniciando modo Vision por lotes para {nome_arquivo}."
+        )
+        markdown_pdf = processar_pdf_vision_por_lotes(
+            config,
+            cnpj,
+            nome_arquivo,
+            conteudo_em_bytes,
+        )
+
+    if not markdown_pdf:
+        return None
+
+    bloco = montar_bloco_markdown(nome_arquivo, markdown_pdf)
+    return bloco.strip() or None
+
+
+def extrair_markdown_pdf(cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> tuple[str, str]:
+    config = get_model_qualitativo()
+
+    markdown = _gerar_markdown_llm(config, cnpj, nome_arquivo, conteudo_em_bytes)
+    if not markdown:
+        log_status(f"[qualitativo] Retry do extrator LLM para {nome_arquivo}.")
+        markdown = _gerar_markdown_llm(config, cnpj, nome_arquivo, conteudo_em_bytes)
+    if markdown:
+        return markdown, "llm"
+
+    texto, _ = extract_full_text_from_bytes(conteudo_em_bytes, nome_arquivo)
+    if texto.strip():
+        log_status(f"[qualitativo] Fallback para texto bruto em {nome_arquivo}.")
+        return (
+            f"# {nome_arquivo}\n\n"
+            "> _Transcricao automatica (texto bruto; o extrator estruturado nao retornou markdown)._\n\n"
+            f"{texto.strip()}",
+            "texto_bruto",
+        )
+
+    log_status(f"[qualitativo] Fallback para placeholder em {nome_arquivo}.")
+    return (
+        f"# {nome_arquivo}\n\n"
+        "> _Nao foi possivel extrair conteudo textual deste PDF (provavel PDF escaneado sem OCR ou falha do extrator). Reenvie com `force` para reprocessar._",
+        "placeholder",
+    )
+
+
 def processar_pdf_texto_por_lotes(config, cnpj: str, nome_arquivo: str, pages, pages_per_chunk: int = 8) -> str | None:
     total_pages = len(pages)
     markdown_chunks = []
@@ -493,8 +617,8 @@ def extrair_dados_qualitativos(
     arquivos_processados, corpo_existente = parse_frontmatter(markdown_existente or "")
     hashes_processados = {item["hash_md5"] for item in arquivos_processados if item.get("hash_md5")}
     corpo = corpo_existente.rstrip()
-    config = get_model_qualitativo()
     total_arquivos = len(arquivos_em_memoria)
+    config = get_model_qualitativo()
 
     log_status(f"[qualitativo] Iniciando processamento de {total_arquivos} arquivo(s) para o CNPJ {cnpj}.")
     if arquivos_processados:
@@ -515,49 +639,13 @@ def extrair_dados_qualitativos(
             )
             log_status(f"[qualitativo] [{indice}/{total_arquivos}] Abrindo PDF em memória...")
 
-            markdown_pdf = None
-            is_scanned = True
-            try:
-                with pdfplumber.open(io.BytesIO(conteudo_em_bytes)) as pdf:
-                    pages = pdf.pages
-                    total_pages = len(pages)
-                    pages_with_text = 0
-                    # Forçar extração básica de texto para verificar se é scanned
-                    for page in pages:
-                        text = (page.extract_text() or "").strip()
-                        if len(text) >= MIN_TEXT_CHARS_PER_PAGE:
-                            pages_with_text += 1
-                    is_scanned = total_pages > 0 and pages_with_text < (total_pages * 0.1)
-
-                    if total_pages > 0 and not is_scanned:
-                        log_status(
-                            f"[qualitativo] [{indice}/{total_arquivos}] PDF com {total_pages} páginas. "
-                            f"Usando modo Texto por Lotes."
-                        )
-                        markdown_pdf = processar_pdf_texto_por_lotes(config, cnpj, nome_arquivo, pages, pages_per_chunk=8)
-            except Exception as e:
-                print(f"    [pdfplumber] Erro ao abrir {nome_arquivo}: {e}")
-                is_scanned = True
-
-            if not markdown_pdf:
-                log_status(
-                    f"[qualitativo] [{indice}/{total_arquivos}] PDF sem texto útil ou falha no lote. "
-                    f"Iniciando modo Vision por lotes."
-                )
-                markdown_pdf = processar_pdf_vision_por_lotes(config, cnpj, nome_arquivo, conteudo_em_bytes)
-
-            if not markdown_pdf:
+            bloco = _gerar_markdown_llm(config, cnpj, nome_arquivo, conteudo_em_bytes)
+            if not bloco:
                 duracao = time.time() - inicio_arquivo
                 log_status(f"[qualitativo] [{indice}/{total_arquivos}] Falha: nenhum Markdown válido extraído de {nome_arquivo} após {duracao:.1f}s.")
                 continue
 
-            bloco = montar_bloco_markdown(nome_arquivo, markdown_pdf)
-            if not bloco:
-                duracao = time.time() - inicio_arquivo
-                log_status(f"[qualitativo] [{indice}/{total_arquivos}] Falha: conteúdo vazio retornado para {nome_arquivo} após {duracao:.1f}s.")
-                continue
-
-            corpo = f"{corpo}\n{bloco.lstrip()}".rstrip() if corpo else bloco.strip()
+            corpo = f"{corpo}\n{bloco}".rstrip() if corpo else bloco
             arquivos_processados.append({"nome_arquivo": nome_arquivo, "hash_md5": hash_md5})
             hashes_processados.add(hash_md5)
             duracao = time.time() - inicio_arquivo

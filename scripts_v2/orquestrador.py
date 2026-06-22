@@ -1,9 +1,9 @@
 """
-Orquestrador V2 do pipeline de ingestao.
+Orquestrador V2 do pipeline de cadastro.
 
-Contrato importante: este modulo NAO cria jobs. A camada de API deve criar o
-registro em `pipeline_jobs`, devolver o `job_id` ao front e depois disparar
-`ingerir_ticker(...)` ou `ingerir_documentos(...)` com esse `job_id`.
+Contrato importante: este modulo NAO cria processos. A camada de API deve criar o
+registro em `pipeline_jobs`, devolver o `process_id` ao front e depois disparar
+`ingerir_ticker(...)` ou `ingerir_documentos(...)` com esse `process_id`.
 """
 
 from __future__ import annotations
@@ -18,7 +18,10 @@ from typing import Any, Callable
 try:
     from scripts_v2 import servico_repositorio as repo
     from scripts_v2.servico_cvm import buscar_dados_cvm
-    from scripts_v2.servico_ia_qualitativa import extrair_dados_qualitativos
+    from scripts_v2.servico_ia_qualitativa import (
+        extrair_markdown_pdf,
+        gerar_titulo_documento,
+    )
     from scripts_v2.servico_ia_quantitativa import (
         carregar_arquivos_em_memoria,
         extrair_dados_quantitativos,
@@ -28,7 +31,7 @@ try:
 except ImportError:
     import servico_repositorio as repo
     from servico_cvm import buscar_dados_cvm
-    from servico_ia_qualitativa import extrair_dados_qualitativos
+    from servico_ia_qualitativa import extrair_markdown_pdf, gerar_titulo_documento
     from servico_ia_quantitativa import (
         carregar_arquivos_em_memoria,
         extrair_dados_quantitativos,
@@ -62,19 +65,19 @@ def _formatar_excecao(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc!r}"
 
 
-async def _atualizar_job(
-    job_id: str | None,
+async def _atualizar_processo(
+    process_id: str | None,
     progresso: dict[str, Any],
     *,
     status: str | None = None,
     etapa_atual: str | None = None,
     erro: str | None = None,
 ) -> None:
-    if not job_id:
+    if not process_id:
         return
     await _to_thread(
-        repo.atualizar_job,
-        job_id,
+        repo.atualizar_processo,
+        process_id,
         status=status,
         etapa_atual=etapa_atual,
         progresso=dict(progresso),
@@ -87,7 +90,7 @@ async def ingerir_ticker(
     *,
     deep: bool = False,
     data_corte_deep: str | None = None,
-    job_id: str | None = None,
+    process_id: str | None = None,
 ) -> dict[str, Any]:
     ticker_norm = (ticker or "").strip().upper()
     progresso: dict[str, Any] = {
@@ -98,8 +101,8 @@ async def ingerir_ticker(
         "erros": [],
     }
     try:
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status="rodando",
             etapa_atual="identidade",
@@ -111,8 +114,8 @@ async def ingerir_ticker(
                 f"status={identidade.get('status')}"
             )
             _append_erro(progresso, mensagem)
-            await _atualizar_job(
-                job_id,
+            await _atualizar_processo(
+                process_id,
                 progresso,
                 status="erro",
                 etapa_atual="identidade",
@@ -136,14 +139,19 @@ async def ingerir_ticker(
         _append_passo(progresso, "identidade")
         progresso["cnpj"] = cnpj
         progresso["tipo_capital"] = tipo_capital
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status="rodando",
             etapa_atual="identidade",
         )
 
-        await _atualizar_job(job_id, progresso, status="rodando", etapa_atual="cvm")
+        await _atualizar_processo(
+            process_id,
+            progresso,
+            status="rodando",
+            etapa_atual="cvm",
+        )
         if cod_cvm:
             try:
                 resultado_cvm = await buscar_dados_cvm(cnpj, str(cod_cvm))
@@ -158,9 +166,19 @@ async def ingerir_ticker(
                 "Emissor sem codigo CVM; demonstracoes virao apenas por PDFs."
             )
             _append_passo(progresso, "cvm_pulado")
-        await _atualizar_job(job_id, progresso, status="rodando", etapa_atual="cvm")
+        await _atualizar_processo(
+            process_id,
+            progresso,
+            status="rodando",
+            etapa_atual="cvm",
+        )
 
-        await _atualizar_job(job_id, progresso, status="rodando", etapa_atual="mercado")
+        await _atualizar_processo(
+            process_id,
+            progresso,
+            status="rodando",
+            etapa_atual="mercado",
+        )
         try:
             resultado_mkt = await buscar_dados_mercado(
                 ticker_norm,
@@ -183,8 +201,8 @@ async def ingerir_ticker(
             _append_erro(progresso, f"Falha nao fatal em mercado para {ticker_norm}: {exc}")
 
         status_final = "concluido_com_erros" if progresso["erros"] else "concluido"
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status=status_final,
             etapa_atual="mercado",
@@ -204,7 +222,12 @@ async def ingerir_ticker(
             f"{_formatar_excecao(exc)}"
         )
         _append_erro(progresso, mensagem)
-        await _atualizar_job(job_id, progresso, status="erro", erro=mensagem)
+        await _atualizar_processo(
+            process_id,
+            progresso,
+            status="erro",
+            erro=mensagem,
+        )
         raise
 
 
@@ -213,12 +236,14 @@ async def ingerir_documentos(
     arquivos: list[tuple[str, bytes]],
     *,
     force: bool = False,
-    job_id: str | None = None,
+    process_id: str | None = None,
 ) -> dict[str, Any]:
     cnpj_norm = repo.normaliza_cnpj(cnpj)
     progresso: dict[str, Any] = {
         "quant_processados": 0,
         "qual_processados": 0,
+        "qual_fallback": 0,
+        "qual_sem_conteudo": 0,
         "pulados_quant": 0,
         "pulados_qual": 0,
         "erros": [],
@@ -228,8 +253,8 @@ async def ingerir_documentos(
         if emissor is None:
             mensagem = "emissor inexistente; rode ingerir_ticker primeiro"
             _append_erro(progresso, mensagem)
-            await _atualizar_job(
-                job_id,
+            await _atualizar_processo(
+                process_id,
                 progresso,
                 status="erro",
                 etapa_atual="validacao_emissor",
@@ -239,13 +264,15 @@ async def ingerir_documentos(
                 "cnpj": cnpj_norm,
                 "quant_processados": 0,
                 "qual_processados": 0,
+                "qual_fallback": 0,
+                "qual_sem_conteudo": 0,
                 "pulados_quant": 0,
                 "pulados_qual": 0,
                 "erros": progresso["erros"],
             }
 
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status="rodando",
             etapa_atual="peek_hashes",
@@ -266,16 +293,16 @@ async def ingerir_documentos(
 
         progresso["pulados_quant"] = len(arquivos) - len(novos_quant)
         progresso["pulados_qual"] = len(arquivos) - len(novos_qual)
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status="rodando",
             etapa_atual="peek_hashes",
         )
 
         if novos_quant:
-            await _atualizar_job(
-                job_id,
+            await _atualizar_processo(
+                process_id,
                 progresso,
                 status="rodando",
                 etapa_atual="ia_quant",
@@ -311,12 +338,12 @@ async def ingerir_documentos(
                 progresso["pulados_quant"] += len(novos_quant)
                 _append_erro(
                     progresso,
-                    f"Falha durante a ingestao quantitativa de {cnpj_norm}: {exc}",
+                    f"Falha durante o processamento quantitativo de {cnpj_norm}: {exc}",
                 )
 
         if novos_qual:
-            await _atualizar_job(
-                job_id,
+            await _atualizar_processo(
+                process_id,
                 progresso,
                 status="rodando",
                 etapa_atual="ia_qual",
@@ -324,28 +351,48 @@ async def ingerir_documentos(
             for nome, conteudo in novos_qual:
                 md5_arquivo = _md5(conteudo)
                 try:
-                    markdown = await _to_thread(
-                        extrair_dados_qualitativos,
+                    markdown, modo = await _to_thread(
+                        extrair_markdown_pdf,
                         cnpj_norm,
-                        [(nome, conteudo)],
-                        "",
-                        False,
+                        nome,
+                        conteudo,
                     )
-                    if markdown.strip():
-                        await _to_thread(
-                            repo.salvar_compendio_qualitativo,
+                    if modo == "placeholder":
+                        titulo = Path(nome).stem or nome
+                    else:
+                        titulo = await _to_thread(
+                            gerar_titulo_documento,
                             cnpj_norm,
                             nome,
-                            md5_arquivo,
                             markdown,
-                            force,
                         )
-                        progresso["qual_processados"] += 1
-                    else:
-                        progresso["pulados_qual"] += 1
+                    await _to_thread(
+                        repo.salvar_compendio_qualitativo,
+                        cnpj_norm,
+                        nome,
+                        md5_arquivo,
+                        markdown,
+                        force,
+                        titulo,
+                    )
+                    await _to_thread(
+                        repo.definir_titulo_quantitativo,
+                        cnpj_norm,
+                        md5_arquivo,
+                        titulo,
+                    )
+                    progresso["qual_processados"] += 1
+                    if modo == "texto_bruto":
+                        progresso["qual_fallback"] += 1
                         _append_erro(
                             progresso,
-                            f"Markdown vazio no qualitativo para o arquivo {nome}.",
+                            f"Markdown via texto bruto (LLM nao retornou estruturado) para {nome}.",
+                        )
+                    elif modo == "placeholder":
+                        progresso["qual_sem_conteudo"] += 1
+                        _append_erro(
+                            progresso,
+                            f"PDF sem texto extraivel; salvo placeholder para {nome}.",
                         )
                 except Exception as exc:
                     progresso["pulados_qual"] += 1
@@ -353,16 +400,16 @@ async def ingerir_documentos(
                         progresso,
                         f"Falha no qualitativo para o arquivo {nome}: {exc}",
                     )
-                await _atualizar_job(
-                    job_id,
+                await _atualizar_processo(
+                    process_id,
                     progresso,
                     status="rodando",
                     etapa_atual="ia_qual",
                 )
 
         status_final = "concluido_com_erros" if progresso["erros"] else "concluido"
-        await _atualizar_job(
-            job_id,
+        await _atualizar_processo(
+            process_id,
             progresso,
             status=status_final,
             etapa_atual="finalizado",
@@ -371,6 +418,8 @@ async def ingerir_documentos(
             "cnpj": cnpj_norm,
             "quant_processados": progresso["quant_processados"],
             "qual_processados": progresso["qual_processados"],
+            "qual_fallback": progresso["qual_fallback"],
+            "qual_sem_conteudo": progresso["qual_sem_conteudo"],
             "pulados_quant": progresso["pulados_quant"],
             "pulados_qual": progresso["pulados_qual"],
             "erros": progresso["erros"],
@@ -381,7 +430,12 @@ async def ingerir_documentos(
             f"{_formatar_excecao(exc)}"
         )
         _append_erro(progresso, mensagem)
-        await _atualizar_job(job_id, progresso, status="erro", erro=mensagem)
+        await _atualizar_processo(
+            process_id,
+            progresso,
+            status="erro",
+            erro=mensagem,
+        )
         raise
 
 
@@ -391,7 +445,7 @@ async def _executar_cli(args: argparse.Namespace) -> dict[str, Any]:
             args.ticker,
             deep=args.deep,
             data_corte_deep=args.data_corte_deep,
-            job_id=args.job_id,
+            process_id=args.process_id,
         )
 
     if args.comando == "docs":
@@ -405,14 +459,14 @@ async def _executar_cli(args: argparse.Namespace) -> dict[str, Any]:
             args.cnpj,
             arquivos,
             force=args.force,
-            job_id=args.job_id,
+            process_id=args.process_id,
         )
 
     raise SystemExit("Comando invalido. Use 'ticker' ou 'docs'.")
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Orquestrador V2 do pipeline de ingestao")
+    parser = argparse.ArgumentParser(description="Orquestrador V2 do pipeline de cadastro")
     subparsers = parser.add_subparsers(dest="comando", required=True)
 
     parser_ticker = subparsers.add_parser("ticker", help="Ingere identidade, CVM e mercado")
@@ -428,9 +482,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Data minima YYYY-MM-DD para preencher taxas na camada deep",
     )
     parser_ticker.add_argument(
-        "--job-id",
+        "--process-id",
         default=None,
-        help="Job existente em pipeline_jobs a ser atualizado",
+        help="Processo existente em pipeline_jobs a ser atualizado",
     )
 
     parser_docs = subparsers.add_parser(
@@ -445,9 +499,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Ignora o pre-filtro por hash e reprocessa os PDFs",
     )
     parser_docs.add_argument(
-        "--job-id",
+        "--process-id",
         default=None,
-        help="Job existente em pipeline_jobs a ser atualizado",
+        help="Processo existente em pipeline_jobs a ser atualizado",
     )
 
     return parser
