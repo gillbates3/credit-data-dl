@@ -16,7 +16,7 @@ export function AppNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-wrap gap-1 rounded-full border border-chrome-line bg-black/10 p-1">
+    <nav className="flex max-w-full flex-nowrap gap-1.5 overflow-x-auto whitespace-nowrap rounded-full bg-transparent p-1 scrollbar-none xl:justify-end">
       {navItems.map((item) => {
         const isActive =
           item.href === "/"
@@ -28,10 +28,10 @@ export function AppNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-semibold tracking-wide transition-all duration-200",
+              "shrink-0 rounded-full px-4 py-2 text-sm font-semibold tracking-normal transition-all duration-200",
               isActive
                 ? "bg-chrome-ink text-accent shadow-sm"
-                : "text-chrome-muted hover:bg-white/5 hover:text-chrome-ink",
+                : "bg-[var(--chrome-tab-idle-bg)] text-[var(--chrome-tab-idle-ink)] hover:bg-[var(--chrome-tab-idle-bg-hover)]",
             )}
           >
             {item.label}

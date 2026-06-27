@@ -2,7 +2,7 @@
 
 > Documento de transição entre conversas. O usuário (**Gabriel**, dono/arquiteto) continua a mesma linha de trabalho numa conversa nova, começando do zero. Eu (Claude) atuo como **Tech Lead / Arquiteto**: discuto, desenho e **entrego planos autocontidos** em `.claude/plans/`; o usuário **delega a implementação a agentes Codex** (em conversas paralelas). Não implemento código direto a menos que pedido. Idioma: **pt-BR**. Plataforma: **Windows** (PowerShell + Bash disponíveis).
 >
-> **Estado macro (2026-06-22):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional e em polimento**. Em curso: (a) **refactor de estilo p/ a marca BOCAINA**, (b) **título descritivo de documentos**, (c) **fix de contraste do menu**. Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
+> **Estado macro (2026-06-27):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional**. **Estilo BOCAINA (8a) e fix de contraste do nav (8d) já estão code-complete**. Backlog atual de planos (prontos p/ o Codex): **humanizar rótulos de processo (8e)**, **stepper de etapas estilo metrô (8f)**, **aba "Gerenciar Dados" / CRUD da base (8g)**. **Novo workstream (esta sessão): acelerar a ingestão de PDFs (§8j)** — estudo empírico de modelos concluído (decisão: **migrar de gemini-2.5-flash → gemini-3.1-flash-lite**, com pendências) e **paralelismo de chunks** a desenhar. Decisão estratégica: **MarkItDown** (Office→markdown) **adiado**; **Batch API adiado** (dono não trabalha nisso agora). Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
 
 ---
 
@@ -113,7 +113,7 @@ App Router + TS + Tailwind v4 + React 19. **BFF**: `frontend/lib/api.ts` (`impor
 
 ## 8. Planos ativos em `.claude/plans/` (backlog atual)
 
-### 8a. `front-estilo-bocaina.md` — redesign visual p/ a marca BOCAINA (EM ANDAMENTO pelo Codex)
+### 8a. `front-estilo-bocaina.md` — redesign visual p/ a marca BOCAINA ✅ CODE-COMPLETE (verificado nesta sessão)
 Tema **claro + cromo verde**; **só Gotham** (sem serifada New York); **só logo+pássaro** (sem padronagens/22,5°). Tokens já no `globals.css`; falta varrer componentes (sombras, raios, glass removido, `text-white`→cream, `text-rose`→`--danger`), nav e assets de logo. Inspiração: site oficial https://bocainacapital.com/. Decisões salvas na memória `marca-bocaina.md`.
 
 ### 8b. `markdown-todos-pdfs.md` — todo PDF vira markdown salvo e visível ✅ IMPLEMENTADO E VERIFICADO (nesta conversa)
@@ -122,10 +122,41 @@ A trilha qualitativa já transcreve qualquer PDF em markdown; o bug era **descar
 ### 8c. `titulos-descritivos-documentos.md` — título descritivo por documento (PLANEJADO, não implementado)
 `nome_arquivo` (UUID) vira só referência interna; gerar título via LLM sobre o markdown ("ITR Mar2026", "Escritura 2ª Emissão VPLT"…). **Forward-only**; título gravado **nas duas tabelas** (qual+quant). Requer **ALTER TABLE … ADD COLUMN titulo text** (qual+quant), nova `gerar_titulo_documento()`, `definir_titulo_quantitativo()`, ajuste em `montar_visao_completa_emissor` e no front (`QuantitativeManifest.titulo` + coluna do manifesto). `MarkdownDocument.titulo` já existe.
 
-### 8d. `fix-nav-contraste.md` — abas inativas verde-no-verde (PLANEJADO)
-Diagnóstico: o `app-nav.tsx` **já usa texto cream nos inativos** (correto) → o sintoma é **build/cache defasado**. Plano: (1) apagar `frontend/.next` + restart dev (provável causa real); (2) blindar com tokens `--chrome-item-*` e a regra "inativo ⇒ texto `--chrome-ink` cream; nunca verde".
+### 8d. `fix-nav-contraste.md` — abas inativas verde-no-verde ✅ CODE-COMPLETE (verificado nesta sessão)
+Tokens `--chrome-item-*` no `globals.css`, nav legível (inativos em cream). Pequena divergência aceita: o `app-nav.tsx` usa `text-chrome-muted` + `bg-black/10` em vez dos tokens `--chrome-item-*` (que ficaram órfãos) — legível, passa contraste. Resta só **QA visual** rodando o app.
 
-> Planos legados (já entregues): `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, `api-fastapi.md`, `front-nextjs.md`.
+### 8e. `humanizar-rotulos-processo.md` — rótulos de processo (tipo/etapa/desfecho) (PARCIALMENTE no working tree; falta concluir)
+Apresentação no front: `formatRotulo` (sentence-case + acrônimos cvm→CVM) p/ `tipo`/`etapa`; `rotuloEtapaProcesso` traduz etapa para ação descritiva ("Identificando emissor na ANBIMA") e mostra **desfecho** ("Concluído"/"Falhou") quando terminal. **Inclui Tarefa 2b: remover a coluna "Etapa atual" da tabela de processos recentes** (virou eco do Status). Helpers em `format.ts` já existem no working tree; faltam 2 call sites + a remoção da coluna (seção de reconciliação no plano detalha).
+
+### 8f. `stepper-etapas-processo.md` — stepper visual de etapas estilo metrô (PLANEJADO)
+Régua horizontal de progresso no rodapé do card esquerdo do monitor; nomes curtos de estação; estados concluida/pulada/atual/falhou/pendente derivados de `passos_concluidos`+`etapa_atual`+`status` (sem backend). Trata CVM pulada (empresa Fechada) e erro. `computarEtapas()` em `lib/process-monitor.ts` + componente `process-stepper.tsx`.
+
+### 8g. `aba-gerenciar-dados.md` — nova aba CRUD da base por entidade (PLANEJADO)
+Aba "Gerenciar Dados" (`/gerenciar-dados`) p/ visualizar e editar a base **sem** abrir o Supabase. Por debênture (características/agenda/histórico) e por emissor (DFs/qualitativo/quantitativo), + tabelas mestras de emissores/emissões. Decisões do dono: **CRUD célula a célula**; **hard delete com cascata** (impacto + 1 clique); **editar conteúdo de markdown**; confirmação simples sem auditoria; **reprocessamento sobrescrevendo edições manuais é aceito** (sem proteção sticky). ⚠️ FKs **sem `ON DELETE CASCADE`** → cascata explícita e ordenada no repositório (ordem no plano). Camadas: repo (`atualizar_/criar_/deletar_`) → API `/edicao` (PATCH/POST/DELETE) → front BFF.
+
+### 8h. MarkItDown (Office→markdown) — INVESTIGADO, ADIADO (sem plano de execução ainda)
+Avaliado nesta sessão: **não** substituir o Gemini na trilha qualitativa (Gemini é interpretativo: reestrutura tabelas, pula boilerplate, OCR; MarkItDown-core ≈ nosso fallback de texto bruto). **Decisão do dono:** ampliar para arquivos Office **só depois** da ingestão de PDFs estar 100% debugada/implementada. Viabilidade já confirmada (encaixe limpo via dispatcher por tipo na cabeça da trilha qual; o resto do fluxo é agnóstico a formato). Para docs financeiros tabela-pesados, **Docling/PyMuPDF4LLM** são alternativas melhores que o MarkItDown — avaliar num piloto quando for a hora.
+
+### 8i. Status granular ao vivo — `progresso.mensagem_andamento` ✅ BACKEND JÁ IMPLEMENTADO (working tree, não commitado)
+`servico_ia_qualitativa.py` e `servico_ia_quantitativa.py` agora aceitam um `status_callback` (helper `_emit_status`) que emite mensagens humanas finas durante o processamento (ex.: "Enviando páginas 1 a 8 ao Gemini", "Aguardando resposta do Gemini…", "PDF escaneado detectado…"). O `orquestrador.py` conecta isso via `notificar` e grava em **`progresso.mensagem_andamento`** (texto livre, atualizado a cada sub-passo). Também ganhou retry 429/503/UNAVAILABLE (3 tentativas) em `call_ai_with_text` nas duas trilhas.
+> ⚠️ **Impacto nos planos 8e/8f (escritos ANTES deste campo existir — contemplar na implementação):** há agora um sinal **mais rico e já legível** que o enum `etapa_atual`. O card "ETAPA ATUAL" (8e) pode exibir `progresso.mensagem_andamento` (texto fino) em vez de/junto com o rótulo do enum; o stepper (8f) pode usar essa mensagem como legenda da estação ativa. O enum `etapa_atual` continua válido para a etapa "grossa".
+
+### 8j. Acelerar a ingestão de PDFs — estudo de modelos + paralelismo (EM ANDAMENTO, esta sessão)
+Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada, alguns de 80-100 págs) é impraticável no fluxo sequencial atual. Plano do estudo: `.claude/plans/comparar-modelos-extracao.md`. Artefatos descartáveis: `tmp/comparar_modelos_extracao.py` (harness instrumentado: roda qual+quant nos 2 modelos, captura `finish_reason`/tokens/latência/custo, flags `--apenas-modelo/--thinking/--reforco/--tag/--dry-run`) e `tmp/probe_latencia.py` (mede TTFT vs geração). Saídas em `tmp/comparacao_modelos/`.
+
+**Diagnóstico de latência (provado):** cada chunk de 8 págs leva ~30-40s, e **~89% é geração de output** (TTFT ~4s; ~150-260 tok/s; cada chunk gera ~6-9K tokens de markdown). Logo: chunk maior **não** acelera (mais output) e **arrisca truncar**; **paralelismo é a alavanca** (chunks são independentes). O harness é **sequencial de propósito** (mede o baseline = produção atual); o paralelismo ainda **não** foi implementado.
+
+**Limites Gemini do dono (console, tier pago):** 2.5 Flash = **1.000 RPM / 1M TPM / 10K RPD**; 3.1 Flash-Lite = **150K RPD** (15x); 2.5 Flash-Lite = RPD ilimitado. **O gargalo da carga fria é o RPD** (chunking multiplica requisições): a 10K/dia ≈ ~50 emissores/dia; a 150K ≈ ~750/dia. RPM/TPM têm folga gigante (paralelismo é trivialmente seguro). **Preços (USD/1M, in/out):** 2.5 Flash $0,30/$2,50; 3.1 Flash-Lite $0,25/$1,50; 2.5 Flash-Lite $0,10/$0,40.
+
+**Estudo de fidelidade (2.5 Flash vs 3.1 Flash-Lite, corpus Arteris/Regis Bittencourt — `Relatorio Anual 2025.pdf` 80p + `Relatorio Anual e Demonstracoes Financeiras.pdf` 75p):**
+- 3.1 **thinking-off** → **resume demais** (cobre só ~45% dos números do 2.5; qual gerou 1/5 do conteúdo; quant 80 vs 218 contas). **Reprova** a regra de ouro "NÃO RESUMA".
+- 3.1 **thinking-on (`-1`) + reforço de prompt anti-resumo** → **paridade de fidelidade**: cobre **97-98%** dos números do 2.5 (e às vezes mais); quant arq.1 = 204 vs 218 contas. Custo cai ~30% e latência empata (thinking conta como output e come a vantagem de velocidade).
+- ⚠️ **Risco descoberto:** thinking **dinâmico** na quant (JSON) **trunca** — num arquivo o modelo gastou ~63K tokens raciocinando e estourou `MAX_TOKENS` → 0 contas. **Quant precisa de thinking com TETO FIXO (ex.: ~3.072) + `max_output_tokens` alto.**
+
+**Decisões travadas:** (1) migrar p/ **gemini-3.1-flash-lite** (prêmio real = 15x RPD + ~30% mais barato, fidelidade equivalente); (2) **manter 8 págs/chunk** (dono); (3) **thinking-on na qual, thinking-limitado na quant**; (4) **reforço de prompt anti-resumo é necessário**; (5) Batch API e chunks maiores **fora de escopo** agora.
+**Pendências antes de implementar:** (a) **micro-teste da quant** (thinking fixo + `max_output_tokens`) p/ confirmar fim do truncamento — **não rodado ainda**; (b) decidir se mantém **2.5 Flash como fallback configurável** (3.1 é **preview** = risco de estabilidade) — **indeciso**; (c) decidir **mecanismo de concorrência** p/ o paralelismo (**cliente async nativo** vs **ThreadPoolExecutor**) — **adiado**; (d) escrever o **plano do paralelismo** (semáforo global + backoff **com jitter** — 503/overload do 2.5 foi frequente nos testes). Troca em produção quando aprovado: `MODEL_NAME` em `servico_ia_qualitativa.py:60` + 2 strings inline em `servico_ia_quantitativa.py:266` e `:349` → unificar em `GEMINI_MODEL`/env.
+
+> Planos legados (já entregues): `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, `api-fastapi.md`, `front-nextjs.md`. Planos já implementados: `markdown-todos-pdfs.md` (8b), `front-estilo-bocaina.md` (8a), `fix-nav-contraste.md` (8d).
 
 ---
 
@@ -135,10 +166,10 @@ Diagnóstico: o `app-nav.tsx` **já usa texto cream nos inativos** (correto) →
 1. `validacao_emissor` (emissor precisa existir; senão job=`erro`).
 2. `peek_hashes` (dedup por MD5, por trilha).
 3. `ia_quant` — só arquivos financeiros (heurística de nome): Gemini→JSON CVM → `demonstracoes_financeiras` + manifesto quant.
-4. `ia_qual` — **todos** os arquivos: Gemini→markdown fiel (modo Texto por lotes, fallback Vision); agora **sempre salva** (texto bruto/placeholder se falhar).
+4. `ia_qual` — **todos** os arquivos: Gemini→markdown fiel — **PDF digital ⇒ modo Texto por lotes (8 pág.); PDF escaneado ⇒ modo Vision por lotes (15 pág.)**. A rota é decidida por `is_scanned`; Vision **não** é fallback de falha de texto — **isto é POR DESIGN (não reintroduzir):** falha no modo texto costuma ser erro transitório do Gemini (429/503), tratado pelos retries; não faz sentido gastar Vision num PDF que comprovadamente tem texto. **O mesmo vale na trilha quantitativa** (texto que falha não cai mais para Vision). Retries 429/503/UNAVAILABLE (3 tentativas). Sanitização do sufixo do tempfile (`re.match(r"^(\.[a-zA-Z0-9]+)")`) corrige `UnicodeEncodeError` no Windows. Agora **sempre salva** (texto bruto/placeholder se falhar).
 5. `finalizado` → `concluido` | `concluido_com_erros`.
 
-Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotência por hash, por trilha. Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
+Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotência por hash, por trilha. Durante o processamento, cada sub-passo emite status humano via `status_callback` → grava em `progresso.mensagem_andamento` (ver §8i). Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
 
 ---
 
@@ -163,18 +194,27 @@ Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotê
 
 ## 12. Histórico desta conversa (o que rolou)
 
-Ordem cronológica do que foi feito/decidido nesta sessão (para continuidade):
+Ordem cronológica do que foi feito/decidido nesta sessão (2026-06-23 a 06-25):
 
-1. **Performance do front** diagnosticada e corrigida: N+1 em `/ativos` (batching), dossiê paralelizado (`ThreadPoolExecutor`), Data Cache (`revalidate`) no front, caminho `resumo=1`, `force-dynamic` em `/`. (Codex estendeu com histórico paginado, `/ativos/opcoes` e `AssetSelectorCombobox`.)
-2. **Plano de estilo BOCAINA** (`front-estilo-bocaina.md`): revisei o front inteiro, li o Guia de Identidade (PDF) e o site oficial; decisões do dono: claro+cromo verde, só Gotham, só logo/pássaro. Memória `marca-bocaina.md` criada. Codex começou a aplicar (tokens já no `globals.css`/`layout.tsx`).
-3. **Plano "markdown p/ todos os PDFs"** (`markdown-todos-pdfs.md`) — **implementado pelo Codex e verificado por mim** (extrair_markdown_pdf, sempre salvar, selo financeiro). Constatação-chave: a trilha qualitativa já é um transcritor genérico; o bug era o descarte por markdown vazio.
-4. **Explicações** detalhadas do fluxo da API e de todas as etapas/desfechos por arquivo (a pedido do usuário).
-5. **Plano de títulos descritivos** (`titulos-descritivos-documentos.md`): nome do arquivo só p/ referência interna; título por LLM; forward-only; nas duas tabelas. (Planejado, não implementado.)
-6. **Plano de fix do menu** (`fix-nav-contraste.md`): abas inativas verde-no-verde — a fonte já está correta; causa provável = build defasado; blindar com tokens de chrome.
-7. **Este HANDOVER** reescrito do zero refletindo o estado atual.
+1. **Auditoria de 8a/8d**: confirmei que o estilo BOCAINA e o fix de contraste do nav estão **code-complete** (greps de regressão limpos — sem teal/slate/glass/`text-white`; tokens no `globals.css`; assets de logo presentes em `frontend/public/brand/`). Resta só QA visual rodando o app.
+2. **Dúvidas respondidas**: STATUS do portfólio sempre "ativo" porque a view `v_portfolio_ativo` filtra `WHERE status='ativo'` (valores possíveis: ativo|resgatado|vencido|default); significado de cada etapa do pipeline (ticker: identidade→cvm→mercado; documentos: validacao_emissor→peek_hashes→ia_quant→ia_qual→finalizado).
+3. **Plano `humanizar-rotulos-processo.md` (8e)**: capitalização de enums (`formatRotulo`) + rótulos de ação descritivos com desfecho (`rotuloEtapaProcesso`) + **remoção da coluna "Etapa atual"** da tabela de recentes (redundante com Status). Helpers já no working tree; faltam 2 call sites + a remoção (reconciliação no plano).
+4. **Plano `stepper-etapas-processo.md` (8f)**: stepper horizontal estilo metrô no monitor (decisões do dono: horizontal, nomes curtos).
+5. **MarkItDown (8h)**: avaliado a fundo; viabilidade de Office confirmada (encaixe via dispatcher por tipo); **adiado** por decisão do dono até a ingestão de PDFs estar estável.
+6. **Plano `aba-gerenciar-dados.md` (8g)**: nova aba CRUD da base por entidade (4 decisões do dono travadas; cascata explícita por falta de `ON DELETE CASCADE`).
+7. **Este HANDOVER** atualizado (§8 backlog + macro state + este histórico).
+
+> Working tree atual: edições parciais de 8e em `frontend/lib/format.ts` (helpers `formatRotulo`/`rotuloEtapaProcesso`) e em alguns call sites (`process-monitor-client`, `recent-processes-table`, `page`, `asset-detail-panel`). Tudo passa `tsc --noEmit`. Não revertido. **Novos arquivos desta sessão (não commitados):** `tmp/comparar_modelos_extracao.py`, `tmp/probe_latencia.py`, `tmp/comparacao_modelos/` (saídas), `.claude/plans/comparar-modelos-extracao.md`.
+
+### Sessão 2026-06-26/27 (o que rolou)
+1. Dono levantou: ingestão de PDFs lenta/impraticável p/ centenas de emissores. Explorada arquitetura (paralelismo, Batch, RPD) → §8j.
+2. **Estudo de modelos completo** (2.5 Flash vs 3.1 Flash-Lite): harness instrumentado + 3 rodadas (3.1 thinking-off, 3.1 thinking-on+reforço, baseline 2.5). **Veredito: migrar p/ 3.1 Flash-Lite** (paridade de fidelidade com thinking-on+reforço; 15x RPD; ~30% mais barato). Detalhes/pendências em §8j.
+3. Provado que a latência por chunk é **output-bound** (~89% geração) → paralelismo é a alavanca; chunk maior não ajuda.
+4. HANDOVER atualizado (§8j + macro state + este histórico).
 
 ### Primeira ação sugerida na próxima conversa
-1. Confirmar com o Codex o andamento de `front-estilo-bocaina.md` (8a) e `fix-nav-contraste.md` (8d); verificar o asset do logo em `frontend/public/brand/`.
-2. Rodar o **teste end-to-end** do `markdown-todos-pdfs` (reenviar um PDF financeiro + um escaneado; conferir lista de Markdowns e selo "financeiro").
-3. Encaminhar `titulos-descritivos-documentos.md` (8c) p/ implementação (lembrar do ALTER TABLE).
-4. Só então: planejar/implementar o **Passo 6** (`servico_analise_credito.py`).
+1. **(Ingestão §8j)** Rodar o **micro-teste da quant** (3.1, thinking fixo ~3.072 + `max_output_tokens` alto) p/ confirmar fim do truncamento; decidir fallback 2.5 (preview) e mecanismo de concorrência; **escrever o plano do paralelismo** (semáforo global + backoff com jitter) e a migração `GEMINI_MODEL`.
+2. Entregar ao Codex os planos prontos: **8e**, **8f**, **8g**.
+3. Fechar o **QA visual** do estilo BOCAINA (8a/8d) rodando o app.
+4. `titulos-descritivos-documentos.md` (8c) pendente (lembrar do ALTER TABLE).
+5. Quando a ingestão estiver estável: **piloto MarkItDown/Docling** (8h) e, por último de propósito, **Passo 6** (`servico_analise_credito.py`).

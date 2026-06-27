@@ -10,6 +10,7 @@ import {
   formatCurrency,
   formatDate,
   formatPercent,
+  formatRotulo,
   formatText,
 } from "@/lib/format";
 import type { PortfolioItem } from "@/lib/types";
@@ -48,7 +49,7 @@ const columns: DataColumn<PortfolioItem>[] = [
         >
           {item.ticker_deb}
         </Link>
-        <p className="mt-1 text-xs text-[var(--muted)]">{formatText(item.tipo)}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">{formatRotulo(item.tipo)}</p>
       </div>
     ),
   },
@@ -123,13 +124,6 @@ const columns: DataColumn<PortfolioItem>[] = [
 ];
 
 function summarizePortfolio(items: PortfolioItem[]) {
-  const today = new Date();
-  const todayKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("-");
-
   const totalVolume = items.reduce((sum, item) => {
     const numeric = Number(item.volume_emissao);
     return Number.isFinite(numeric) ? sum + numeric : sum;
@@ -144,14 +138,7 @@ function summarizePortfolio(items: PortfolioItem[]) {
     totalOperacoes: items.length,
     totalVolume,
     incentivadas,
-    proximoVencimento:
-      items
-        .map((item) => item.data_vencimento)
-        .filter(
-          (date): date is string =>
-            typeof date === "string" && date.length > 0 && date >= todayKey,
-        )
-        .sort()[0] ?? null,
+    naoIncentivadas: items.length - incentivadas,
   };
 }
 
@@ -165,41 +152,41 @@ export default async function HomePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Visão Geral"
-        title="Mapa operacional da carteira de debêntures"
-        description="Leitura consolidada dos ativos da base. O nome do emissor abre o Detalhe do Emissor e o ticker leva direto ao Detalhe do Ativo já filtrado."
+        title="Mapa das debêntures cadastradas"
+        description="Clique no ticker ou no nome do emissor para mais detalhes."
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Operações ativas
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.1fr_1.2fr_1.38fr_2.12fr]">
+        <div className="flex min-h-[118px] flex-col justify-between rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
+          <p className="whitespace-nowrap font-mono text-[0.72rem] leading-none uppercase tracking-[0.18em] text-[var(--muted)]">
+            Quantidade total
           </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
+          <p className="mt-3 text-[clamp(2rem,2.6vw,2.6rem)] leading-none font-semibold tracking-[0.01em] tabular-nums text-[var(--ink)]">
             {summary.totalOperacoes}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Volume emissões
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {formatCurrency(summary.totalVolume)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+        <div className="flex min-h-[118px] flex-col justify-between rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
+          <p className="whitespace-nowrap font-mono text-[0.72rem] leading-none uppercase tracking-[0.18em] text-[var(--muted)]">
             Incentivadas
           </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
+          <p className="mt-3 text-[clamp(2rem,2.6vw,2.6rem)] leading-none font-semibold tracking-[0.01em] tabular-nums text-[var(--ink)]">
             {summary.incentivadas}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Próximo vencimento
+        <div className="flex min-h-[118px] flex-col justify-between rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
+          <p className="whitespace-nowrap font-mono text-[0.72rem] leading-none uppercase tracking-[0.18em] text-[var(--muted)]">
+            Não incentivadas
           </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {formatDate(summary.proximoVencimento)}
+          <p className="mt-3 text-[clamp(2rem,2.6vw,2.6rem)] leading-none font-semibold tracking-[0.01em] tabular-nums text-[var(--ink)]">
+            {summary.naoIncentivadas}
+          </p>
+        </div>
+        <div className="flex min-h-[118px] flex-col justify-between rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
+          <p className="whitespace-nowrap font-mono text-[0.72rem] leading-none uppercase tracking-[0.18em] text-[var(--muted)]">
+            Volume emissões
+          </p>
+          <p className="mt-3 overflow-hidden text-[clamp(2rem,2.45vw,2.75rem)] leading-none font-semibold tracking-[0.01em] tabular-nums text-[var(--ink)]">
+            {formatCurrency(summary.totalVolume)}
           </p>
         </div>
       </section>

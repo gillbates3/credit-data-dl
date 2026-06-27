@@ -13,8 +13,10 @@ import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Iterable
+from threading import local
+from typing import Any, Callable, Iterable
 
+import httpx
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
@@ -25,7 +27,7 @@ ENV_FILE = PROJETO_RAIZ / ".env"
 
 BATCH_SIZE = 500
 
-_CLIENT: Client | None = None
+_THREAD_STATE = local()
 _ENV_LOADED = False
 
 
@@ -58,9 +60,9 @@ def _load_env_once() -> None:
 
 
 def _get_client() -> Client:
-    global _CLIENT
-    if _CLIENT is not None:
-        return _CLIENT
+    client = getattr(_THREAD_STATE, "client", None)
+    if client is not None:
+        return client
 
     _load_env_once()
     url = (os.getenv("SUPABASE_URL") or "").strip()
@@ -71,8 +73,48 @@ def _get_client() -> Client:
             "Verifique .env.local e .env."
         )
 
-    _CLIENT = create_client(url, key)
-    return _CLIENT
+    client = create_client(url, key)
+    _THREAD_STATE.client = client
+    return client
+
+
+def _reset_client() -> None:
+    client = getattr(_THREAD_STATE, "client", None)
+    if client is None:
+        return
+
+    postgrest = getattr(client, "postgrest", None)
+    session = getattr(postgrest, "session", None)
+    close = getattr(session, "close", None)
+    if callable(close):
+        close()
+
+    _THREAD_STATE.client = None
+
+
+class RepositoryUnavailableError(RuntimeError):
+    """Falha temporaria ao consultar o Supabase/PostgREST."""
+
+
+def _execute_query(
+    query_factory: Callable[[], Any],
+    *,
+    operation: str,
+    retry: bool = True,
+) -> Any:
+    try:
+        return query_factory().execute()
+    except httpx.HTTPError as exc:
+        _reset_client()
+        if retry:
+            return _execute_query(
+                query_factory,
+                operation=operation,
+                retry=False,
+            )
+        raise RepositoryUnavailableError(
+            f"Falha temporaria ao executar '{operation}' no Supabase."
+        ) from exc
 
 
 def _first_or_none(rows: list[dict[str, Any]] | None) -> dict[str, Any] | None:
@@ -98,12 +140,12 @@ def _select_rows(
     filter_col: str,
     filter_value: str,
 ) -> list[dict[str, Any]]:
-    response = (
-        _get_client()
+    response = _execute_query(
+        lambda: _get_client()
         .table(table_name)
         .select(select_cols)
-        .eq(filter_col, filter_value)
-        .execute()
+        .eq(filter_col, filter_value),
+        operation=f"select {table_name} por {filter_col}",
     )
     return response.data or []
 
@@ -133,16 +175,15 @@ def resolver_emissor_por_identificador(identificador: str) -> dict[str, Any] | N
             }
 
     ticker = bruto.upper()
-    debenture = _first_or_none(
-        _get_client()
+    response_debenture = _execute_query(
+        lambda: _get_client()
         .table("deb_caracteristicas")
         .select("cnpj,ticker_deb,nome_emissor")
         .eq("ticker_deb", ticker)
-        .limit(1)
-        .execute()
-        .data
-        or []
+        .limit(1),
+        operation="resolver emissor por ticker de debenture",
     )
+    debenture = _first_or_none(response_debenture.data or [])
     if debenture is not None:
         emissor = buscar_emissor(debenture["cnpj"])
         if emissor is not None:
@@ -155,16 +196,15 @@ def resolver_emissor_por_identificador(identificador: str) -> dict[str, Any] | N
                 "emissor": emissor,
             }
 
-    emissor_acao = _first_or_none(
-        _get_client()
+    response_emissor_acao = _execute_query(
+        lambda: _get_client()
         .table("emissores")
         .select("*")
         .eq("ticker_acao", ticker)
-        .limit(1)
-        .execute()
-        .data
-        or []
+        .limit(1),
+        operation="resolver emissor por ticker de acao",
     )
+    emissor_acao = _first_or_none(response_emissor_acao.data or [])
     if emissor_acao is not None:
         return {
             "tipo_identificador": "ticker_acao",
@@ -710,19 +750,29 @@ def buscar_processo(process_id: str) -> dict[str, Any] | None:
 
 def listar_processos_recentes() -> list[dict[str, Any]]:
     """Ultimos 100 processos (view v_jobs_recentes, ja ordenada/limitada)."""
-    return _get_client().table("v_jobs_recentes").select("*").execute().data or []
+    response = _execute_query(
+        lambda: _get_client().table("v_jobs_recentes").select("*"),
+        operation="listar processos recentes",
+    )
+    return response.data or []
 
 
 def listar_portfolio() -> list[dict[str, Any]]:
     """Portfolio de operacoes ativas (view v_portfolio_ativo)."""
-    return _get_client().table("v_portfolio_ativo").select("*").execute().data or []
+    response = _execute_query(
+        lambda: _get_client().table("v_portfolio_ativo").select("*"),
+        operation="listar portfolio",
+    )
+    return response.data or []
 
 
 def listar_agenda_eventos() -> list[dict[str, Any]]:
     """Proximos eventos previstos (view v_proximos_pagamentos)."""
-    return (
-        _get_client().table("v_proximos_pagamentos").select("*").execute().data or []
+    response = _execute_query(
+        lambda: _get_client().table("v_proximos_pagamentos").select("*"),
+        operation="listar agenda de eventos",
     )
+    return response.data or []
 
 
 def listar_debentures_emissor(cnpj: str) -> list[dict[str, Any]]:
@@ -730,23 +780,22 @@ def listar_debentures_emissor(cnpj: str) -> list[dict[str, Any]]:
     cnpj_norm = normaliza_cnpj(cnpj)
     if not cnpj_norm:
         return []
-    return (
-        _get_client()
+    response = _execute_query(
+        lambda: _get_client()
         .table("v_emissor_debentures")
         .select("*")
-        .eq("cnpj", cnpj_norm)
-        .execute()
-        .data
-        or []
+        .eq("cnpj", cnpj_norm),
+        operation="listar debentures do emissor",
     )
+    return response.data or []
 
 
 def buscar_ativo_por_ticker(ticker_deb: str) -> dict[str, Any] | None:
     ticker = (ticker_deb or "").strip().upper()
     if not ticker:
         return None
-    rows = (
-        _get_client()
+    response = _execute_query(
+        lambda: _get_client()
         .table("deb_caracteristicas")
         .select(
             "id,cnpj,ticker_deb,nome_emissor,tipo,serie,numero_emissao,"
@@ -759,67 +808,79 @@ def buscar_ativo_por_ticker(ticker_deb: str) -> dict[str, Any] | None:
             "perspectiva_rating,status,isin,codigo_cetip,atualizado_em"
         )
         .eq("ticker_deb", ticker)
-        .limit(1)
-        .execute()
-        .data
-        or []
+        .limit(1),
+        operation="buscar ativo por ticker",
     )
+    rows = response.data or []
     return _first_or_none(rows)
 
 
 def listar_ativos(cnpj: str | None = None) -> list[dict[str, Any]]:
-    query = (
-        _get_client()
-        .table("deb_caracteristicas")
-        .select(
-            "id,cnpj,ticker_deb,nome_emissor,tipo,serie,numero_emissao,"
-            "data_emissao,data_vencimento,data_primeiro_pagamento,prazo_anos,"
-            "volume_emissao,valor_unitario_emissao,quantidade_debentures,"
-            "indexador,spread_emissao,taxa_prefixada,periodicidade_juros,"
-            "periodicidade_amort,especie,garantias,garantidores,lei_incentivo,"
-            "banco_coordenador,banco_estruturador,agente_fiduciario,"
-            "banco_liquidante,rating_emissao,agencia_rating,data_ultimo_rating,"
-            "perspectiva_rating,status,isin,codigo_cetip,atualizado_em"
-        )
-        .order("data_vencimento")
-    )
-
     cnpj_norm = normaliza_cnpj(cnpj)
-    if cnpj_norm:
-        query = query.eq("cnpj", cnpj_norm)
-
-    return query.execute().data or []
+    response = _execute_query(
+        lambda: (
+            _get_client()
+            .table("deb_caracteristicas")
+            .select(
+                "id,cnpj,ticker_deb,nome_emissor,tipo,serie,numero_emissao,"
+                "data_emissao,data_vencimento,data_primeiro_pagamento,prazo_anos,"
+                "volume_emissao,valor_unitario_emissao,quantidade_debentures,"
+                "indexador,spread_emissao,taxa_prefixada,periodicidade_juros,"
+                "periodicidade_amort,especie,garantias,garantidores,lei_incentivo,"
+                "banco_coordenador,banco_estruturador,agente_fiduciario,"
+                "banco_liquidante,rating_emissao,agencia_rating,data_ultimo_rating,"
+                "perspectiva_rating,status,isin,codigo_cetip,atualizado_em"
+            )
+            .eq("cnpj", cnpj_norm)
+            .order("data_vencimento")
+            if cnpj_norm
+            else _get_client()
+            .table("deb_caracteristicas")
+            .select(
+                "id,cnpj,ticker_deb,nome_emissor,tipo,serie,numero_emissao,"
+                "data_emissao,data_vencimento,data_primeiro_pagamento,prazo_anos,"
+                "volume_emissao,valor_unitario_emissao,quantidade_debentures,"
+                "indexador,spread_emissao,taxa_prefixada,periodicidade_juros,"
+                "periodicidade_amort,especie,garantias,garantidores,lei_incentivo,"
+                "banco_coordenador,banco_estruturador,agente_fiduciario,"
+                "banco_liquidante,rating_emissao,agencia_rating,data_ultimo_rating,"
+                "perspectiva_rating,status,isin,codigo_cetip,atualizado_em"
+            )
+            .order("data_vencimento")
+        ),
+        operation="listar ativos",
+    )
+    return response.data or []
 
 
 def listar_agenda_ativo(ticker_deb: str) -> list[dict[str, Any]]:
     ticker = (ticker_deb or "").strip().upper()
     if not ticker:
         return []
-    return (
-        _get_client()
+    response = _execute_query(
+        lambda: _get_client()
         .table("deb_agenda")
         .select(
             "id,data_evento,data_liquidacao,data_base,evento,evento_arc,"
             "taxa,valor,status,grupo_status,criado_em"
         )
         .eq("ticker_deb", ticker)
-        .order("data_evento")
-        .execute()
-        .data
-        or []
+        .order("data_evento"),
+        operation="listar agenda do ativo",
     )
+    return response.data or []
 
 
 def contar_historico_ativo(ticker_deb: str) -> int:
     ticker = (ticker_deb or "").strip().upper()
     if not ticker:
         return 0
-    rows = (
-        _get_client()
+    rows = _execute_query(
+        lambda: _get_client()
         .table("deb_historico_diario")
         .select("id", count="exact")
-        .eq("ticker_deb", ticker)
-        .execute()
+        .eq("ticker_deb", ticker),
+        operation="contar historico do ativo",
     )
     return int(rows.count or 0)
 
@@ -833,28 +894,34 @@ def listar_historico_ativo(
     ticker = (ticker_deb or "").strip().upper()
     if not ticker:
         return []
-    query = (
-        _get_client()
-        .table("deb_historico_diario")
-        .select(
-            "id,data_referencia,pu_par,vna,juros,prazo_remanescente,"
-            "pu_indicativo,taxa_indicativa,taxa_compra,taxa_venda,"
-            "duration_dias_uteis,desvio_padrao,percentual_pu_par,"
-            "percentual_vne,intervalo_indicativo_min,intervalo_indicativo_max,"
-            "referencia_ntnb,spread_indicativo,volume_financeiro,"
-            "quantidade_negocios,quantidade_titulos,taxa_media_negocios,"
-            "pu_medio_negocios,reune,percentual_reune,pu_indicativo_status,"
-            "taxa_indicativa_status,flag_status,data_ultima_atualizacao,criado_em"
+    def _build_query() -> Any:
+        query = (
+            _get_client()
+            .table("deb_historico_diario")
+            .select(
+                "id,data_referencia,pu_par,vna,juros,prazo_remanescente,"
+                "pu_indicativo,taxa_indicativa,taxa_compra,taxa_venda,"
+                "duration_dias_uteis,desvio_padrao,percentual_pu_par,"
+                "percentual_vne,intervalo_indicativo_min,intervalo_indicativo_max,"
+                "referencia_ntnb,spread_indicativo,volume_financeiro,"
+                "quantidade_negocios,quantidade_titulos,taxa_media_negocios,"
+                "pu_medio_negocios,reune,percentual_reune,pu_indicativo_status,"
+                "taxa_indicativa_status,flag_status,data_ultima_atualizacao,criado_em"
+            )
+            .eq("ticker_deb", ticker)
+            .order("data_referencia", desc=True)
         )
-        .eq("ticker_deb", ticker)
-        .order("data_referencia", desc=True)
-    )
-    if offset > 0:
-        query = query.range(offset, offset + (limit or 1000) - 1)
-    elif limit is not None:
-        query = query.limit(limit)
+        if offset > 0:
+            return query.range(offset, offset + (limit or 1000) - 1)
+        if limit is not None:
+            return query.limit(limit)
+        return query
 
-    return query.execute().data or []
+    response = _execute_query(
+        _build_query,
+        operation="listar historico do ativo",
+    )
+    return response.data or []
 
 def _montar_detalhe_ativo_registro(
     registro: dict[str, Any],
@@ -884,10 +951,14 @@ def _emissores_por_cnpjs(cnpjs: list[str]) -> dict[str, dict[str, Any]]:
     unicos = sorted({normaliza_cnpj(c) for c in cnpjs if normaliza_cnpj(c)})
     resultado: dict[str, dict[str, Any]] = {}
     for lote in _chunks(unicos, IN_FILTER_SIZE):
-        rows = (
-            _get_client().table("emissores").select("*").in_("cnpj", lote).execute().data
-            or []
+        response = _execute_query(
+            lambda lote=lote: _get_client()
+            .table("emissores")
+            .select("*")
+            .in_("cnpj", lote),
+            operation="buscar emissores por cnpjs",
         )
+        rows = response.data or []
         for row in rows:
             resultado[row["cnpj"]] = row
     return resultado
@@ -897,19 +968,18 @@ def _agenda_por_tickers(tickers: list[str]) -> dict[str, list[dict[str, Any]]]:
     unicos = sorted({(t or "").strip().upper() for t in tickers if t})
     grupos: dict[str, list[dict[str, Any]]] = {t: [] for t in unicos}
     for lote in _chunks(unicos, IN_FILTER_SIZE):
-        rows = (
-            _get_client()
+        response = _execute_query(
+            lambda lote=lote: _get_client()
             .table("deb_agenda")
             .select(
                 "ticker_deb,id,data_evento,data_liquidacao,data_base,evento,"
                 "evento_arc,taxa,valor,status,grupo_status,criado_em"
             )
             .in_("ticker_deb", lote)
-            .order("data_evento")
-            .execute()
-            .data
-            or []
+            .order("data_evento"),
+            operation="buscar agenda por tickers",
         )
+        rows = response.data or []
         for row in rows:
             ticker = (row.pop("ticker_deb", "") or "").strip().upper()
             grupos.setdefault(ticker, []).append(row)
@@ -920,8 +990,8 @@ def _historico_por_tickers(tickers: list[str]) -> dict[str, list[dict[str, Any]]
     unicos = sorted({(t or "").strip().upper() for t in tickers if t})
     grupos: dict[str, list[dict[str, Any]]] = {t: [] for t in unicos}
     for lote in _chunks(unicos, IN_FILTER_SIZE):
-        rows = (
-            _get_client()
+        response = _execute_query(
+            lambda lote=lote: _get_client()
             .table("deb_historico_diario")
             .select(
                 "ticker_deb,id,data_referencia,pu_par,vna,juros,prazo_remanescente,"
@@ -934,11 +1004,10 @@ def _historico_por_tickers(tickers: list[str]) -> dict[str, list[dict[str, Any]]
                 "taxa_indicativa_status,flag_status,data_ultima_atualizacao,criado_em"
             )
             .in_("ticker_deb", lote)
-            .order("data_referencia", desc=True)
-            .execute()
-            .data
-            or []
+            .order("data_referencia", desc=True),
+            operation="buscar historico por tickers",
         )
+        rows = response.data or []
         for row in rows:
             ticker = (row.pop("ticker_deb", "") or "").strip().upper()
             grupos.setdefault(ticker, []).append(row)
@@ -1053,53 +1122,49 @@ def buscar_opcoes_ativo_emissor(
     vistos: set[str] = set()
 
     if not bruto:
-        ativos = (
-            _get_client()
+        response_ativos = _execute_query(
+            lambda: _get_client()
             .table("deb_caracteristicas")
             .select("ticker_deb,nome_emissor,cnpj")
             .order("ticker_deb")
-            .limit(limit)
-            .execute()
-            .data
-            or []
+            .limit(limit),
+            operation="buscar opcoes de ativos",
         )
+        ativos = response_ativos.data or []
     else:
-        ativos_ticker = (
-            _get_client()
+        response_ativos_ticker = _execute_query(
+            lambda: _get_client()
             .table("deb_caracteristicas")
             .select("ticker_deb,nome_emissor,cnpj")
             .ilike("ticker_deb", f"{prefixo_texto}%")
             .order("ticker_deb")
-            .limit(limit)
-            .execute()
-            .data
-            or []
+            .limit(limit),
+            operation="buscar ativos por ticker",
         )
+        ativos_ticker = response_ativos_ticker.data or []
         if prefixo_cnpj:
-            ativos_cnpj = (
-                _get_client()
+            response_ativos_cnpj = _execute_query(
+                lambda: _get_client()
                 .table("deb_caracteristicas")
                 .select("ticker_deb,nome_emissor,cnpj")
                 .ilike("cnpj", f"{prefixo_cnpj}%")
                 .order("ticker_deb")
-                .limit(limit)
-                .execute()
-                .data
-                or []
+                .limit(limit),
+                operation="buscar ativos por cnpj",
             )
+            ativos_cnpj = response_ativos_cnpj.data or []
             ativos = [*ativos_ticker, *ativos_cnpj]
         else:
-            ativos_nome = (
-                _get_client()
+            response_ativos_nome = _execute_query(
+                lambda: _get_client()
                 .table("deb_caracteristicas")
                 .select("ticker_deb,nome_emissor,cnpj")
                 .ilike("nome_emissor", f"{prefixo_texto}%")
                 .order("nome_emissor")
-                .limit(limit)
-                .execute()
-                .data
-                or []
+                .limit(limit),
+                operation="buscar ativos por nome de emissor",
             )
+            ativos_nome = response_ativos_nome.data or []
             ativos = [*ativos_ticker, *ativos_nome]
 
     for ativo in ativos:
@@ -1130,40 +1195,37 @@ def buscar_opcoes_ativo_emissor(
         return opcoes[:limit]
 
     if prefixo_cnpj:
-        emissores = (
-            _get_client()
+        response_emissores = _execute_query(
+            lambda: _get_client()
             .table("emissores")
             .select("cnpj,nome,ticker_acao")
             .ilike("cnpj", f"{prefixo_cnpj}%")
             .order("cnpj")
-            .limit(limit)
-            .execute()
-            .data
-            or []
+            .limit(limit),
+            operation="buscar emissores por cnpj",
         )
+        emissores = response_emissores.data or []
     else:
-        emissores_nome = (
-            _get_client()
+        response_emissores_nome = _execute_query(
+            lambda: _get_client()
             .table("emissores")
             .select("cnpj,nome,ticker_acao")
             .ilike("nome", f"{prefixo_texto}%")
             .order("nome")
-            .limit(limit)
-            .execute()
-            .data
-            or []
+            .limit(limit),
+            operation="buscar emissores por nome",
         )
-        emissores_ticker = (
-            _get_client()
+        emissores_nome = response_emissores_nome.data or []
+        response_emissores_ticker = _execute_query(
+            lambda: _get_client()
             .table("emissores")
             .select("cnpj,nome,ticker_acao")
             .ilike("ticker_acao", f"{prefixo_texto}%")
             .order("ticker_acao")
-            .limit(limit)
-            .execute()
-            .data
-            or []
+            .limit(limit),
+            operation="buscar emissores por ticker",
         )
+        emissores_ticker = response_emissores_ticker.data or []
         emissores = [*emissores_ticker, *emissores_nome]
 
     for emissor in emissores:

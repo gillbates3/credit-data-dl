@@ -18,7 +18,7 @@ export default async function CadastroDadosPage({
   // Esta tela só usa ticker + nome do emissor para o dropdown; `resumo=1` evita
   // baixar agenda e histórico diário de todos os ativos à toa.
   const [assets, processes] = await Promise.all([
-    apiGet<AssetDetail[]>("/ativos?resumo=1", { revalidate: 30 }),
+    apiGet<AssetDetail[]>("/ativos?resumo=1"),
     apiGet<ProcessRecord[]>("/processos", { revalidate: 15 }),
   ]);
 
@@ -42,8 +42,8 @@ export default async function CadastroDadosPage({
     <div className="space-y-6">
       <PageHeader
         eyebrow="Cadastro de Dados"
-        title="Entrada operacional da base"
-        description="Cadastre tickers e documentos na mesma tela. O acompanhamento do processo atual e o histórico recente aparecem logo abaixo, sem sair do fluxo."
+        title="Entrada de novas informações"
+        description="Cadastre um novo ativo pelo ticker e adicione PDFs atrelados a ele"
       />
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -61,7 +61,10 @@ export default async function CadastroDadosPage({
               Acompanhamento em tempo real
             </h2>
           </div>
-          <ProcessMonitorClient initialProcess={currentProcess} />
+          <ProcessMonitorClient
+            key={currentProcess.id}
+            initialProcess={currentProcess}
+          />
         </section>
       ) : null}
 

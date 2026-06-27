@@ -20,12 +20,23 @@ import re
 import sys
 import time
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Callable, Dict, List, Any, Optional
 from playwright.async_api import async_playwright
 
 # =====================================================================
 # FUNÇÕES DE CONVERSÃO E LIMPEZA
 # =====================================================================
+
+def _emit_status(
+    mensagem: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
+    if not status_callback:
+        return
+    try:
+        status_callback(" ".join(str(mensagem or "").split()))
+    except Exception:
+        pass
 
 def f(v) -> Optional[float]:
     if v is None or v == "": return None
@@ -143,7 +154,14 @@ def consolidar_historico_light(ticker: str, grafico: dict, curva: dict, precos: 
 # EXTRATOR DE TAXAS (CAMADA DEEP)
 # =====================================================================
 
-async def extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List[Dict], data_corte_deep: Optional[str] = None, datas_desconhecidas: Optional[List[str]] = None):
+async def extrair_taxas_faltantes_calculadora(
+    page,
+    ticker: str,
+    historico: List[Dict],
+    data_corte_deep: Optional[str] = None,
+    datas_desconhecidas: Optional[List[str]] = None,
+    status_callback: Callable[[str], None] | None = None,
+):
     # Identificar datas sem taxa indicativa mas com PU indicativo
     datas_para_raspar = [
         r["data_referencia"] for r in historico 
@@ -158,9 +176,17 @@ async def extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List
         datas_para_raspar = [d for d in datas_para_raspar if d in desconhecidas_set]
 
     if not datas_para_raspar:
+        _emit_status(
+            f"Nao ha taxas faltantes para complementar na camada deep de {ticker}.",
+            status_callback,
+        )
         return
 
     print(f"[{ticker}] DEEP LAYER: Buscando {len(datas_para_raspar)} taxas faltantes na calculadora (corte: {data_corte_deep})...")
+    _emit_status(
+        f"Camada deep: buscando {len(datas_para_raspar)} taxas faltantes na calculadora...",
+        status_callback,
+    )
     url_calc = f"https://data.anbima.com.br/ferramentas/calculadora/debentures/{ticker}?ativo=debentures"
     
     resultados_taxas = {}
@@ -196,6 +222,10 @@ async def extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List
             await page.wait_for_selector(date_input_selector, timeout=5000)
         except: 
             print(f"[{ticker}] ERRO: Não encontrou seletor de data na calculadora.")
+            _emit_status(
+                f"Nao foi possivel localizar o campo de data da calculadora para {ticker}.",
+                status_callback,
+            )
             page.remove_listener("response", handle_response)
             return
 
@@ -224,6 +254,10 @@ async def extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List
             else:
                 falhas_consecutivas = 0
                 vagas_preenchidas += 1
+                _emit_status(
+                    f"Camada deep: taxa preenchida para {dt_str}.",
+                    status_callback,
+                )
                 for r in historico:
                     if r["data_referencia"] == dt_str:
                         if isinstance(taxa_val, str):
@@ -233,20 +267,38 @@ async def extrair_taxas_faltantes_calculadora(page, ticker: str, historico: List
                 
             if falhas_consecutivas >= 10:
                 print(f"[{ticker}] Circuit breaker acionado na calculadora. Parando o deep scrape.")
+                _emit_status(
+                    f"Camada deep interrompida apos muitas falhas consecutivas para {ticker}.",
+                    status_callback,
+                )
                 break
                 
         except Exception as e:
             print(f"[{ticker}] Erro na calculadora ({dt_str}): {e}")
+            _emit_status(
+                f"Falha ao consultar a calculadora para a data {dt_str}.",
+                status_callback,
+            )
 
     page.remove_listener("response", handle_response)
     print(f"[{ticker}] DEEP LAYER: {vagas_preenchidas} taxas preenchidas com sucesso.")
+    _emit_status(
+        f"Camada deep concluida com {vagas_preenchidas} taxas preenchidas.",
+        status_callback,
+    )
 
 
 # =====================================================================
 # SERVIÇO PRINCIPAL
 # =====================================================================
 
-async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep: Optional[str] = None, datas_desconhecidas: Optional[List[str]] = None) -> Dict[str, Any]:
+async def buscar_dados_mercado(
+    ticker: str,
+    deep: bool = False,
+    data_corte_deep: Optional[str] = None,
+    datas_desconhecidas: Optional[List[str]] = None,
+    status_callback: Callable[[str], None] | None = None,
+) -> Dict[str, Any]:
     """
     Busca os dados de mercado da ANBIMA para um ticker.
     Retorna dicionário limpo e consolidado com características, agenda e histórico.
@@ -316,10 +368,18 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
         page.on("response", handle_response)
         
         print(f"[{ticker}] Navegando para extração de dados brutos (API BFF)...")
+        _emit_status(
+            f"Abrindo ANBIMA para coletar caracteristicas, agenda e historico de {ticker}...",
+            status_callback,
+        )
         abas = ["caracteristicas", "agenda", "precos"]
         for aba in abas:
             try:
                 print(f"[{ticker}] -> Acessando aba: {aba}")
+                _emit_status(
+                    f"Lendo aba {aba} da ANBIMA...",
+                    status_callback,
+                )
                 # domcontentloaded evita os timeouts de 30s causados por trackers ou long-polling
                 await page.goto(f"https://data.anbima.com.br/debentures/{ticker}/{aba}", wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(2)
@@ -332,6 +392,10 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
                             break
                         
                         print(f"[{ticker}] -> Agenda possui mais páginas. Carregando próxima página ({agenda_paginacao['current_page'] + 1} de {agenda_paginacao['total_pages']})...")
+                        _emit_status(
+                            f"Carregando pagina {agenda_paginacao['current_page'] + 2} de {agenda_paginacao['total_pages']} da agenda...",
+                            status_callback,
+                        )
                         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                         await asyncio.sleep(0.5)
                         
@@ -343,10 +407,18 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
                             break
             except Exception as e:
                 print(f"[{ticker}] -> Aviso ao acessar aba {aba}: {e}")
+                _emit_status(
+                    f"Aviso ao acessar a aba {aba} da ANBIMA para {ticker}.",
+                    status_callback,
+                )
             
         page.remove_listener("response", handle_response)
 
         print(f"[{ticker}] Consolidando Histórico Diário (Camada Light)...")
+        _emit_status(
+            f"Consolidando historico diario da camada light para {ticker}...",
+            status_callback,
+        )
         # 1. Historico (Light + Deep opcional)
         historico_diario = consolidar_historico_light(
             ticker,
@@ -357,9 +429,24 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
 
         if deep:
             print(f"[{ticker}] Iniciando rotina de Camada Deep (Calculadora)...")
-            await extrair_taxas_faltantes_calculadora(page, ticker, historico_diario, data_corte_deep, datas_desconhecidas)
+            _emit_status(
+                f"Iniciando camada deep da calculadora para complementar taxas de {ticker}...",
+                status_callback,
+            )
+            await extrair_taxas_faltantes_calculadora(
+                page,
+                ticker,
+                historico_diario,
+                data_corte_deep,
+                datas_desconhecidas,
+                status_callback=status_callback,
+            )
         else:
             print(f"[{ticker}] Camada Deep desativada. Pulando calculadora.")
+            _emit_status(
+                f"Camada deep desativada para {ticker}; seguindo apenas com a camada light.",
+                status_callback,
+            )
 
         await context.close()
         await browser.close()
@@ -369,6 +456,10 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
     # ==================================================
     
     print(f"[{ticker}] Aplicando regras de limpeza e padronização dos dados...")
+    _emit_status(
+        f"Aplicando limpeza e padronizacao final dos dados de mercado de {ticker}...",
+        status_callback,
+    )
     # 1. Características
     c_raw = dados_brutos.get("caracteristicas.json", {})
     emissao = c_raw.get("emissao", {}) or {}
@@ -436,6 +527,10 @@ async def buscar_dados_mercado(ticker: str, deep: bool = False, data_corte_deep:
             "grupo_status":    ev.get("status", {}).get("grupo_status") if isinstance(ev.get("status"), dict) else None
         })
 
+    _emit_status(
+        f"Coleta de mercado concluida: {len(agenda_limpa)} eventos e {len(historico_diario)} dias de historico.",
+        status_callback,
+    )
     return {
         "ticker_deb": ticker,
         "caracteristicas": caracteristicas_limpas,

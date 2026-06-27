@@ -1,10 +1,24 @@
 "use client";
 
-import { startTransition, useEffect, useEffectEvent, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
+import { useRouter } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
+import { ProcessStepper } from "@/components/process-stepper";
 import { StatusBadge } from "@/components/status-badge";
-import { formatDateTime, formatText } from "@/lib/format";
+import { formatCnpj } from "@/lib/cnpj";
+import {
+  formatDateTime,
+  formatRotulo,
+  formatText,
+  rotuloEtapaProcesso,
+} from "@/lib/format";
 import {
   formatProgressLabel,
   isTerminalProcessStatus,
@@ -15,12 +29,47 @@ interface ProcessMonitorClientProps {
   initialProcess: ProcessRecord;
 }
 
+function formatProcessTarget(process: ProcessRecord): {
+  primary: string;
+  secondary: string | null;
+} {
+  const nomeEmissor =
+    typeof process.progresso?.nome_emissor === "string"
+      ? process.progresso.nome_emissor.trim()
+      : "";
+  const alvo = (process.alvo ?? "").trim();
+  const alvoFormatado = formatCnpj(alvo);
+  const alvoEhCnpj = alvo.replace(/\D/g, "").length === 14;
+
+  if (nomeEmissor && alvoEhCnpj) {
+    return {
+      primary: nomeEmissor,
+      secondary: alvoFormatado,
+    };
+  }
+
+  return {
+    primary: formatText(alvo),
+    secondary: null,
+  };
+}
+
 export function ProcessMonitorClient({
   initialProcess,
 }: ProcessMonitorClientProps) {
+  const router = useRouter();
   const [process, setProcess] = useState(initialProcess);
   const [pollError, setPollError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null);
+  const previousStatusRef = useRef(initialProcess.status);
+
+  useEffect(() => {
+    previousStatusRef.current = initialProcess.status;
+    setProcess(initialProcess);
+    setPollError(null);
+    setIsRefreshing(false);
+  }, [initialProcess]);
 
   const refreshProcess = useEffectEvent(async () => {
     if (isTerminalProcessStatus(process.status)) {
@@ -68,12 +117,67 @@ export function ProcessMonitorClient({
     return () => window.clearInterval(intervalId);
   }, [process.id, process.status]);
 
-  const progressEntries = Object.entries(process.progresso ?? {}).filter(
-    ([key, value]) => key !== "erros" && value !== null && value !== undefined,
-  );
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = process.status;
+
+    const acabouDeConcluir =
+      !isTerminalProcessStatus(previousStatus) &&
+      isTerminalProcessStatus(process.status);
+    const alvoEhCnpj = (process.alvo ?? "").replace(/\D/g, "").length === 14;
+    const deveAtualizarCatalogo =
+      acabouDeConcluir && process.status !== "erro" && !alvoEhCnpj;
+
+    if (deveAtualizarCatalogo) {
+      router.refresh();
+    }
+  }, [process.alvo, process.status, router]);
+
+  const progress = process.progresso ?? {};
+  const progressEntries = Object.entries(progress).flatMap(([key, value]) => {
+    if (
+      key === "erros" ||
+      key === "passos_concluidos" ||
+      key === "mensagem_andamento" ||
+      key === "mensagens_andamento"
+    ) {
+      return [];
+    }
+
+    if (key === "periodos_cvm" && progress.nome_emissor) {
+      return [];
+    }
+
+    if (key === "nome_emissor") {
+      return value ? [["nome_emissor", value] as const] : [];
+    }
+
+    if (key === "cnpj") {
+      return value ? [["cnpj", formatCnpj(String(value))] as const] : [];
+    }
+
+    return value !== null && value !== undefined ? [[key, value] as const] : [];
+  });
   const progressErrors = Array.isArray(process.progresso?.erros)
     ? process.progresso.erros
     : [];
+  const targetDisplay = formatProcessTarget(process);
+  const liveStatusMessages = Array.isArray(process.progresso?.mensagens_andamento)
+    ? process.progresso.mensagens_andamento.filter(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      )
+    : typeof process.progresso?.mensagem_andamento === "string" &&
+        process.progresso.mensagem_andamento.trim()
+      ? [process.progresso.mensagem_andamento.trim()]
+      : [];
+
+  useEffect(() => {
+    const viewport = messagesViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+    viewport.scrollTop = viewport.scrollHeight;
+  }, [liveStatusMessages.length]);
 
   return (
     <div className="space-y-6">
@@ -100,7 +204,7 @@ export function ProcessMonitorClient({
                 Etapa atual
               </p>
               <p className="mt-1 text-sm font-medium text-[var(--ink)]">
-                {formatText(process.etapa_atual)}
+                {rotuloEtapaProcesso(process.etapa_atual, process.status)}
               </p>
             </div>
           </div>
@@ -123,7 +227,7 @@ export function ProcessMonitorClient({
                 Tipo
               </dt>
               <dd className="mt-2 text-sm font-medium text-[var(--ink)]">
-                {formatText(process.tipo)}
+                {formatRotulo(process.tipo)}
               </dd>
             </div>
             <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
@@ -131,7 +235,12 @@ export function ProcessMonitorClient({
                 Alvo
               </dt>
               <dd className="mt-2 text-sm font-medium text-[var(--ink)]">
-                {formatText(process.alvo)}
+                <span className="block">{targetDisplay.primary}</span>
+                {targetDisplay.secondary ? (
+                  <span className="mt-1 block text-xs font-normal text-[var(--muted)]">
+                    {targetDisplay.secondary}
+                  </span>
+                ) : null}
               </dd>
             </div>
             <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
@@ -151,6 +260,31 @@ export function ProcessMonitorClient({
               </dd>
             </div>
           </dl>
+
+          <ProcessStepper process={process} />
+
+          {liveStatusMessages.length > 0 ? (
+            <div className="mt-4 px-1">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
+                Histórico da API
+              </p>
+              <div
+                ref={messagesViewportRef}
+                className="mt-2 max-h-32 overflow-y-auto rounded-2xl border border-[var(--line)] bg-white/70 px-4 py-3"
+              >
+                <ul className="space-y-2">
+                  {liveStatusMessages.map((message, index) => (
+                    <li
+                      key={`${index}-${message}`}
+                      className="font-mono text-xs leading-5 text-[var(--ink)]"
+                    >
+                      {message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-[var(--shadow-card)]">

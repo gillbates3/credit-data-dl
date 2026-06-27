@@ -28,9 +28,11 @@ import hashlib
 import io
 import json
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
+from typing import Callable
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -127,6 +129,18 @@ MAX_VISION_RETRIES = 3
 def log_status(mensagem: str) -> None:
     agora = time.strftime("%H:%M:%S")
     print(f"[{agora}] {mensagem}")
+
+
+def _emit_status(
+    mensagem: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
+    if not status_callback:
+        return
+    try:
+        status_callback(" ".join(mensagem.split()))
+    except Exception:
+        pass
 
 
 def system_instruction_quantitativa(existing_periods: list[str]) -> str:
@@ -226,7 +240,13 @@ def extract_financial_pages_text_from_bytes(conteudo_em_bytes: bytes, nome_arqui
     return extracted_text, is_scanned
 
 
-def call_ai_with_text(config, cnpj: str, nome_arquivo: str, text: str) -> dict | None:
+def call_ai_with_text(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    text: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> dict | None:
     prompt = f"""CNPJ: {cnpj}
 Arquivo: {nome_arquivo}
 
@@ -235,17 +255,29 @@ Texto das páginas financeiras extraído do PDF:
 
     Extraia os dados financeiros no formato JSON conforme instruído."""
 
-    try:
-        log_status(f"[IA-texto] Aguardando resposta do Gemini para {nome_arquivo}...")
-        response = CLIENT.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=config,
-        )
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"    [IA-texto] Erro em {nome_arquivo}: {e}")
-        return None
+    for attempt in range(3):
+        try:
+            log_status(f"[IA-texto] Aguardando resposta do Gemini para {nome_arquivo} (Tentativa {attempt + 1}/3)...")
+            _emit_status(
+                f"Aguardando resposta do Gemini para {nome_arquivo}.",
+                status_callback,
+            )
+            response = CLIENT.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=config,
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            err_msg = str(e)
+            if "429" in err_msg or "503" in err_msg or "UNAVAILABLE" in err_msg:
+                wait_time = (attempt + 1) * 15
+                print(f"    [IA-texto] Erro temporário (429/503) em {nome_arquivo}. Aguardando {wait_time}s...")
+                time.sleep(wait_time)
+                continue
+            print(f"    [IA-texto] Erro em {nome_arquivo}: {e}")
+            return None
+    return None
 
 
 def file_state_name(file_info) -> str:
@@ -255,24 +287,46 @@ def file_state_name(file_info) -> str:
     return str(state or "")
 
 
-def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> dict | None:
+def call_ai_with_pdf_vision(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    conteudo_em_bytes: bytes,
+    status_callback: Callable[[str], None] | None = None,
+) -> dict | None:
     for attempt in range(MAX_VISION_RETRIES):
         uploaded = None
         temp_path = None
         try:
-            suffix = Path(nome_arquivo).suffix or ".pdf"
+            # Extrai apenas a extensão básica (ex: .pdf) para evitar UnicodeEncodeError no tempfile no Windows
+            raw_suffix = Path(nome_arquivo).suffix or ".pdf"
+            match = re.match(r"^(\.[a-zA-Z0-9]+)", raw_suffix)
+            suffix = match.group(1) if match else ".pdf"
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(conteudo_em_bytes)
                 temp_path = tmp.name
 
             log_status(f"    [Vision] Tentativa {attempt + 1}/{MAX_VISION_RETRIES}: preparando upload de {nome_arquivo}...")
+            _emit_status(
+                f"Preparando upload do PDF {nome_arquivo} para o Gemini.",
+                status_callback,
+            )
             uploaded = CLIENT.files.upload(file=temp_path)
 
             log_status(f"    [Vision] Upload concluído para {nome_arquivo}. Aguardando processamento remoto...")
+            _emit_status(
+                f"Upload concluído. Aguardando o Gemini processar {nome_arquivo}.",
+                status_callback,
+            )
             while True:
                 file_info = CLIENT.files.get(name=uploaded.name)
                 if file_state_name(file_info) == "PROCESSING":
                     log_status(f"    [Vision] Gemini ainda está processando {nome_arquivo}...")
+                    _emit_status(
+                        f"O Gemini ainda está processando {nome_arquivo}.",
+                        status_callback,
+                    )
                     time.sleep(2)
                     continue
                 break
@@ -287,6 +341,10 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
                 "Extraia os dados financeiros deste PDF no formato JSON conforme instruído."
             )
             log_status(f"    [Vision] Enviando prompt final ao Gemini para {nome_arquivo}...")
+            _emit_status(
+                f"Enviando o prompt final ao Gemini para {nome_arquivo}.",
+                status_callback,
+            )
             response = CLIENT.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=[prompt, file_info],
@@ -294,9 +352,10 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
             )
             return json.loads(response.text)
         except Exception as e:
-            if "429" in str(e):
+            err_msg = str(e)
+            if "429" in err_msg or "503" in err_msg or "UNAVAILABLE" in err_msg:
                 wait_time = (attempt + 1) * 30
-                print(f"    [Vision] Quota (429) em {nome_arquivo}. Aguardando {wait_time}s...")
+                print(f"    [Vision] Erro temporário (429/503) em {nome_arquivo}. Aguardando {wait_time}s...")
                 time.sleep(wait_time)
                 continue
             print(f"    [Vision] Erro em {nome_arquivo}: {e}")
@@ -375,6 +434,7 @@ def extrair_dados_quantitativos(
     cnpj: str,
     arquivos_em_memoria: list[tuple[str, bytes]],
     periodos_existentes_db: list[str] | None = None,
+    status_callback: Callable[[str], None] | None = None,
 ) -> dict:
     consolidated = criar_json_base(cnpj)
     config = get_generation_config_quantitativo(periodos_existentes_db)
@@ -405,7 +465,15 @@ def extrair_dados_quantitativos(
                 f"[quantitativo] [{indice}/{total_arquivos}] Analisando {nome_arquivo} "
                 f"({tamanho_kb:,.1f} KB | md5={hash_md5[:12]}...)"
             )
+            _emit_status(
+                f"Analisando o PDF financeiro {nome_arquivo}.",
+                status_callback,
+            )
             log_status(f"[quantitativo] [{indice}/{total_arquivos}] Extraindo páginas financeiras do PDF em memória...")
+            _emit_status(
+                f"Extraindo páginas financeiras de {nome_arquivo}.",
+                status_callback,
+            )
             texto_extraido, is_scanned = extract_financial_pages_text_from_bytes(conteudo_em_bytes, nome_arquivo)
 
             result = None
@@ -416,16 +484,33 @@ def extrair_dados_quantitativos(
                     f"[quantitativo] [{indice}/{total_arquivos}] Texto financeiro extraído com "
                     f"{char_count:,} chars (~{estimated_tokens:,} tokens). Usando modo Texto."
                 )
-                result = call_ai_with_text(config, cnpj, nome_arquivo, texto_extraido)
-                if result is None:
-                    log_status(f"[quantitativo] [{indice}/{total_arquivos}] Fallback Texto→Vision para {nome_arquivo}.")
-                    result = call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+                _emit_status(
+                    f"Enviando o texto financeiro de {nome_arquivo} ao Gemini.",
+                    status_callback,
+                )
+                result = call_ai_with_text(
+                    config,
+                    cnpj,
+                    nome_arquivo,
+                    texto_extraido,
+                    status_callback=status_callback,
+                )
             else:
                 log_status(
                     f"[quantitativo] [{indice}/{total_arquivos}] PDF sem texto financeiro útil suficiente. "
                     f"Usando modo Vision."
                 )
-                result = call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+                _emit_status(
+                    f"Sem texto financeiro útil em {nome_arquivo}. Usando modo Vision.",
+                    status_callback,
+                )
+                result = call_ai_with_pdf_vision(
+                    config,
+                    cnpj,
+                    nome_arquivo,
+                    conteudo_em_bytes,
+                    status_callback=status_callback,
+                )
 
             result = normalizar_resposta_ia(result)
             if result is None:
@@ -447,6 +532,10 @@ def extrair_dados_quantitativos(
                 f"[quantitativo] [{indice}/{total_arquivos}] Sucesso: "
                 f"{n_periodos if n_periodos else len(result.get('periodos', {}))} período(s) aproveitado(s) "
                 f"em {duracao:.1f}s. Total consolidado: {total_periodos} período(s)."
+            )
+            _emit_status(
+                f"Extração concluída para {nome_arquivo}. {total_periodos} período(s) consolidados até agora.",
+                status_callback,
             )
             time.sleep(1)
         except Exception as e:

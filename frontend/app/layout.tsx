@@ -46,8 +46,8 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 md:px-6 lg:px-8">
           <header className="sticky top-4 z-20 rounded-2xl border border-[var(--chrome-line)] bg-[var(--chrome-bg)] p-4 shadow-[var(--shadow-card)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
                 <Image
                   src="/brand/bocaina-logo-cream.png"
                   alt="BOCAINA"
@@ -56,12 +56,12 @@ export default function RootLayout({
                   className="h-8 w-auto"
                   priority
                 />
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <p className="font-mono text-xs uppercase tracking-[0.32em] text-[var(--chrome-muted)]">
-                    Mesa de dados de crédito
+                    Mesa de crédito
                   </p>
-                  <h1 className="text-lg font-semibold tracking-[0.01em] text-[var(--chrome-ink)]">
-                    Mesa operacional de dados de debêntures
+                  <h1 className="text-base font-semibold tracking-[0.01em] text-[var(--chrome-ink)] xl:text-lg">
+                    Análise de debêntures
                   </h1>
                 </div>
               </div>

@@ -12,6 +12,7 @@ import {
   formatDateTime,
   formatNumber,
   formatPercent,
+  formatRotulo,
   formatText,
 } from "@/lib/format";
 import type { AssetDetail, AssetPaymentEvent } from "@/lib/types";
@@ -81,12 +82,9 @@ export function AssetDetailPanel({ asset }: { asset: AssetDetail }) {
     <section className="space-y-4 rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)] md:p-6">
       <div className="flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
-              Ativo
-            </p>
-            <StatusBadge status={caracteristicas.status} />
-          </div>
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
+            Ativo
+          </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <h2 className="text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
               {asset.ticker_deb}
@@ -107,15 +105,7 @@ export function AssetDetailPanel({ asset }: { asset: AssetDetail }) {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[24rem]">
-          <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
-              Volume da emissão
-            </p>
-            <p className="mt-2 text-lg font-semibold tracking-[0.01em] text-[var(--ink)]">
-              {formatCurrency(caracteristicas.volume_emissao)}
-            </p>
-          </div>
+        <div className="lg:min-w-[13rem]">
           <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
               Spread / taxa
@@ -142,7 +132,7 @@ export function AssetDetailPanel({ asset }: { asset: AssetDetail }) {
           </div>
 
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-            <DefinitionItem label="Tipo" value={formatText(caracteristicas.tipo)} />
+            <DefinitionItem label="Tipo" value={formatRotulo(caracteristicas.tipo)} />
             <DefinitionItem label="Série" value={formatText(caracteristicas.serie)} />
             <DefinitionItem
               label="Número da emissão"

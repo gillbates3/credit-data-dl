@@ -38,6 +38,7 @@ import re
 import tempfile
 import time
 from pathlib import Path
+from typing import Callable
 
 from pypdf import PdfReader, PdfWriter
 
@@ -110,6 +111,18 @@ Regras:
 def log_status(mensagem: str) -> None:
     agora = time.strftime("%H:%M:%S")
     print(f"[{agora}] {mensagem}")
+
+
+def _emit_status(
+    mensagem: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
+    if not status_callback:
+        return
+    try:
+        status_callback(" ".join(mensagem.split()))
+    except Exception:
+        pass
 
 
 def gerar_titulo_documento(cnpj: str, nome_arquivo: str, markdown: str) -> str:
@@ -319,7 +332,13 @@ def get_model_qualitativo():
     return types.GenerateContentConfig(temperature=0.0)
 
 
-def call_ai_with_text(config, cnpj: str, nome_arquivo: str, text: str) -> str | None:
+def call_ai_with_text(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    text: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> str | None:
     prompt = (
         f"CNPJ: {cnpj}\n"
         f"Arquivo: {nome_arquivo}\n\n"
@@ -327,17 +346,29 @@ def call_ai_with_text(config, cnpj: str, nome_arquivo: str, text: str) -> str | 
         "Texto extraído do PDF:\n"
         f"{text}"
     )
-    try:
-        log_status(f"[IA-texto] Aguardando resposta do Gemini para {nome_arquivo}...")
-        response = CLIENT.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt,
-            config=config,
-        )
-        return (response.text or "").strip()
-    except Exception as e:
-        print(f"    [IA-texto] Erro em {nome_arquivo}: {e}")
-        return None
+    for attempt in range(3):
+        try:
+            log_status(f"[IA-texto] Aguardando resposta do Gemini para {nome_arquivo} (Tentativa {attempt + 1}/3)...")
+            _emit_status(
+                f"Aguardando resposta do Gemini para {nome_arquivo}.",
+                status_callback,
+            )
+            response = CLIENT.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt,
+                config=config,
+            )
+            return (response.text or "").strip()
+        except Exception as e:
+            err_msg = str(e)
+            if "429" in err_msg or "503" in err_msg or "UNAVAILABLE" in err_msg:
+                wait_time = (attempt + 1) * 15
+                print(f"    [IA-texto] Erro temporário (429/503) em {nome_arquivo}. Aguardando {wait_time}s...")
+                time.sleep(wait_time)
+                continue
+            print(f"    [IA-texto] Erro em {nome_arquivo}: {e}")
+            return None
+    return None
 
 
 def file_state_name(file_info) -> str:
@@ -347,27 +378,49 @@ def file_state_name(file_info) -> str:
     return str(state or "")
 
 
-def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None:
+def call_ai_with_pdf_vision(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    conteudo_em_bytes: bytes,
+    status_callback: Callable[[str], None] | None = None,
+) -> str | None:
     for attempt in range(MAX_VISION_RETRIES):
         uploaded = None
         temp_path = None
         try:
-            suffix = Path(nome_arquivo).suffix or ".pdf"
+            # Extrai apenas a extensão básica (ex: .pdf) para evitar UnicodeEncodeError no tempfile no Windows
+            raw_suffix = Path(nome_arquivo).suffix or ".pdf"
+            match = re.match(r"^(\.[a-zA-Z0-9]+)", raw_suffix)
+            suffix = match.group(1) if match else ".pdf"
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(conteudo_em_bytes)
                 temp_path = tmp.name
 
             log_status(f"    [Vision] Tentativa {attempt + 1}/{MAX_VISION_RETRIES}: preparando upload de {nome_arquivo}...")
+            _emit_status(
+                f"Preparando upload do PDF {nome_arquivo} para o Gemini.",
+                status_callback,
+            )
             uploaded = CLIENT.files.upload(
                 file=temp_path,
                 config=types.UploadFileConfig(mime_type="application/pdf"),
             )
 
             log_status(f"    [Vision] Upload concluído para {nome_arquivo}. Aguardando processamento remoto...")
+            _emit_status(
+                f"Upload concluído. Aguardando o Gemini processar {nome_arquivo}.",
+                status_callback,
+            )
             while True:
                 file_info = CLIENT.files.get(name=uploaded.name)
                 if file_state_name(file_info) == "PROCESSING":
                     log_status(f"    [Vision] Gemini ainda está processando {nome_arquivo}...")
+                    _emit_status(
+                        f"O Gemini ainda está processando {nome_arquivo}.",
+                        status_callback,
+                    )
                     time.sleep(2)
                     continue
                 break
@@ -382,6 +435,10 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
                 f"{PROMPT_QUALITATIVO}"
             )
             log_status(f"    [Vision] Enviando prompt final ao Gemini para {nome_arquivo}...")
+            _emit_status(
+                f"Enviando o prompt final ao Gemini para {nome_arquivo}.",
+                status_callback,
+            )
             response = CLIENT.models.generate_content(
                 model=MODEL_NAME,
                 contents=[prompt, file_info],
@@ -389,9 +446,10 @@ def call_ai_with_pdf_vision(config, cnpj: str, nome_arquivo: str, conteudo_em_by
             )
             return (response.text or "").strip()
         except Exception as e:
-            if "429" in str(e):
+            err_msg = str(e)
+            if "429" in err_msg or "503" in err_msg or "UNAVAILABLE" in err_msg:
                 wait_time = (attempt + 1) * 30
-                print(f"    [Vision] Quota (429) em {nome_arquivo}. Aguardando {wait_time}s...")
+                print(f"    [Vision] Erro temporário (429/503) em {nome_arquivo}. Aguardando {wait_time}s...")
                 time.sleep(wait_time)
                 continue
             print(f"    [Vision] Erro em {nome_arquivo}: {e}")
@@ -416,6 +474,7 @@ def processar_pdf_vision_por_lotes(
     nome_arquivo: str,
     conteudo_em_bytes: bytes,
     pages_per_chunk: int = VISION_PAGES_PER_CHUNK,
+    status_callback: Callable[[str], None] | None = None,
 ) -> str | None:
     """Fatia o PDF escaneado em grupos de páginas e processa cada fatia via Vision.
 
@@ -428,7 +487,13 @@ def processar_pdf_vision_por_lotes(
         total_pages = len(reader.pages)
     except Exception as e:
         log_status(f"    [Vision-Lote] Erro ao ler PDF com pypdf ({nome_arquivo}): {e}. Tentando Vision completo.")
-        return call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+        return call_ai_with_pdf_vision(
+            config,
+            cnpj,
+            nome_arquivo,
+            conteudo_em_bytes,
+            status_callback=status_callback,
+        )
 
     if total_pages == 0:
         log_status(f"    [Vision-Lote] PDF sem páginas detectadas: {nome_arquivo}.")
@@ -440,11 +505,25 @@ def processar_pdf_vision_por_lotes(
             f"    [Vision-Lote] PDF com {total_pages} página(s) ≤ {pages_per_chunk}. "
             "Enviando integralmente ao Vision."
         )
-        return call_ai_with_pdf_vision(config, cnpj, nome_arquivo, conteudo_em_bytes)
+        _emit_status(
+            f"PDF com {total_pages} página(s). Enviando {nome_arquivo} inteiro ao Gemini.",
+            status_callback,
+        )
+        return call_ai_with_pdf_vision(
+            config,
+            cnpj,
+            nome_arquivo,
+            conteudo_em_bytes,
+            status_callback=status_callback,
+        )
 
     log_status(
         f"    [Vision-Lote] PDF escaneado com {total_pages} páginas. "
         f"Fatiando em chunks de {pages_per_chunk} página(s)."
+    )
+    _emit_status(
+        f"PDF escaneado com {total_pages} página(s). Fatiando em blocos de {pages_per_chunk}.",
+        status_callback,
     )
 
     markdown_chunks: list[str] = []
@@ -468,8 +547,18 @@ def processar_pdf_vision_por_lotes(
             f"    [Vision-Lote] Enviando fatia: páginas {pag_inicio}-{pag_fim} "
             f"({len(chunk_bytes) / 1024:.1f} KB) ao Vision..."
         )
+        _emit_status(
+            f"Enviando páginas {pag_inicio} a {pag_fim} de {total_pages} ao Gemini.",
+            status_callback,
+        )
 
-        resp = call_ai_with_pdf_vision(config, cnpj, nome_chunk, chunk_bytes)
+        resp = call_ai_with_pdf_vision(
+            config,
+            cnpj,
+            nome_chunk,
+            chunk_bytes,
+            status_callback=status_callback,
+        )
         if resp:
             markdown_chunks.append(resp)
         else:
@@ -491,7 +580,13 @@ def montar_bloco_markdown(nome_arquivo: str, markdown_pdf: str) -> str:
     return f"\n\n# {nome_arquivo}\n\n{conteudo}\n"
 
 
-def _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> str | None:
+def _gerar_markdown_llm(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    conteudo_em_bytes: bytes,
+    status_callback: Callable[[str], None] | None = None,
+) -> str | None:
     markdown_pdf = None
 
     try:
@@ -505,9 +600,17 @@ def _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes:
                     pages_with_text += 1
             is_scanned = total_pages > 0 and pages_with_text < (total_pages * 0.1)
 
-            if total_pages > 0 and not is_scanned:
+            if total_pages == 0:
+                log_status(f"    [LLM] PDF sem páginas detectadas para {nome_arquivo}.")
+                return None
+
+            if not is_scanned:
                 log_status(
                     f"    [LLM] PDF com {total_pages} paginas. Usando modo Texto por Lotes para {nome_arquivo}."
+                )
+                _emit_status(
+                    f"PDF com {total_pages} página(s). Organizando a transcrição em lotes de 8 páginas.",
+                    status_callback,
                 )
                 markdown_pdf = processar_pdf_texto_por_lotes(
                     config,
@@ -515,20 +618,26 @@ def _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes:
                     nome_arquivo,
                     pages,
                     pages_per_chunk=8,
+                    status_callback=status_callback,
+                )
+            else:
+                log_status(
+                    f"    [LLM] PDF escaneado (sem texto util). Usando modo Vision por lotes para {nome_arquivo}."
+                )
+                _emit_status(
+                    f"PDF escaneado detectado. Processando {nome_arquivo} no modo Vision.",
+                    status_callback,
+                )
+                markdown_pdf = processar_pdf_vision_por_lotes(
+                    config,
+                    cnpj,
+                    nome_arquivo,
+                    conteudo_em_bytes,
+                    status_callback=status_callback,
                 )
     except Exception as e:
         print(f"    [pdfplumber] Erro ao abrir {nome_arquivo}: {e}")
-
-    if not markdown_pdf:
-        log_status(
-            f"    [LLM] PDF sem texto util ou falha no lote. Iniciando modo Vision por lotes para {nome_arquivo}."
-        )
-        markdown_pdf = processar_pdf_vision_por_lotes(
-            config,
-            cnpj,
-            nome_arquivo,
-            conteudo_em_bytes,
-        )
+        return None
 
     if not markdown_pdf:
         return None
@@ -537,19 +646,48 @@ def _gerar_markdown_llm(config, cnpj: str, nome_arquivo: str, conteudo_em_bytes:
     return bloco.strip() or None
 
 
-def extrair_markdown_pdf(cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes) -> tuple[str, str]:
+def extrair_markdown_pdf(
+    cnpj: str,
+    nome_arquivo: str,
+    conteudo_em_bytes: bytes,
+    status_callback: Callable[[str], None] | None = None,
+) -> tuple[str, str]:
     config = get_model_qualitativo()
 
-    markdown = _gerar_markdown_llm(config, cnpj, nome_arquivo, conteudo_em_bytes)
+    markdown = _gerar_markdown_llm(
+        config,
+        cnpj,
+        nome_arquivo,
+        conteudo_em_bytes,
+        status_callback=status_callback,
+    )
     if not markdown:
         log_status(f"[qualitativo] Retry do extrator LLM para {nome_arquivo}.")
-        markdown = _gerar_markdown_llm(config, cnpj, nome_arquivo, conteudo_em_bytes)
+        _emit_status(
+            f"Repetindo a tentativa de transcrição para {nome_arquivo}.",
+            status_callback,
+        )
+        markdown = _gerar_markdown_llm(
+            config,
+            cnpj,
+            nome_arquivo,
+            conteudo_em_bytes,
+            status_callback=status_callback,
+        )
     if markdown:
+        _emit_status(
+            f"Transcrição concluída para {nome_arquivo}.",
+            status_callback,
+        )
         return markdown, "llm"
 
     texto, _ = extract_full_text_from_bytes(conteudo_em_bytes, nome_arquivo)
     if texto.strip():
         log_status(f"[qualitativo] Fallback para texto bruto em {nome_arquivo}.")
+        _emit_status(
+            f"O extrator estruturado falhou; salvando texto bruto de {nome_arquivo}.",
+            status_callback,
+        )
         return (
             f"# {nome_arquivo}\n\n"
             "> _Transcricao automatica (texto bruto; o extrator estruturado nao retornou markdown)._\n\n"
@@ -558,6 +696,10 @@ def extrair_markdown_pdf(cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes)
         )
 
     log_status(f"[qualitativo] Fallback para placeholder em {nome_arquivo}.")
+    _emit_status(
+        f"Não foi possível extrair conteúdo de {nome_arquivo}; salvando placeholder.",
+        status_callback,
+    )
     return (
         f"# {nome_arquivo}\n\n"
         "> _Nao foi possivel extrair conteudo textual deste PDF (provavel PDF escaneado sem OCR ou falha do extrator). Reenvie com `force` para reprocessar._",
@@ -565,7 +707,14 @@ def extrair_markdown_pdf(cnpj: str, nome_arquivo: str, conteudo_em_bytes: bytes)
     )
 
 
-def processar_pdf_texto_por_lotes(config, cnpj: str, nome_arquivo: str, pages, pages_per_chunk: int = 8) -> str | None:
+def processar_pdf_texto_por_lotes(
+    config,
+    cnpj: str,
+    nome_arquivo: str,
+    pages,
+    pages_per_chunk: int = 8,
+    status_callback: Callable[[str], None] | None = None,
+) -> str | None:
     total_pages = len(pages)
     markdown_chunks = []
     
@@ -575,6 +724,10 @@ def processar_pdf_texto_por_lotes(config, cnpj: str, nome_arquivo: str, pages, p
         pag_fim = i + len(chunk_pages)
         
         log_status(f"    [Lote-Texto] Extraindo texto das páginas {pag_inicio} a {pag_fim} de {total_pages}...")
+        _emit_status(
+            f"Extraindo texto das páginas {pag_inicio} a {pag_fim} de {total_pages}.",
+            status_callback,
+        )
         
         text_parts = []
         for page_idx, page in enumerate(chunk_pages):
@@ -594,7 +747,17 @@ def processar_pdf_texto_por_lotes(config, cnpj: str, nome_arquivo: str, pages, p
         nome_chunk = f"{nome_arquivo} (Páginas {pag_inicio} a {pag_fim} de {total_pages})"
         
         log_status(f"    [Lote-Texto] Enviando páginas {pag_inicio}-{pag_fim} ao Gemini...")
-        resp_text = call_ai_with_text(config, cnpj, nome_chunk, chunk_sanitized_text)
+        _emit_status(
+            f"Enviando páginas {pag_inicio} a {pag_fim} de {total_pages} ao Gemini.",
+            status_callback,
+        )
+        resp_text = call_ai_with_text(
+            config,
+            cnpj,
+            nome_chunk,
+            chunk_sanitized_text,
+            status_callback=status_callback,
+        )
         
         if resp_text:
             markdown_chunks.append(resp_text)

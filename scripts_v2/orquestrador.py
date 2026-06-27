@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -65,6 +66,41 @@ def _formatar_excecao(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc!r}"
 
 
+def _append_mensagem_andamento(progresso: dict[str, Any], mensagem: str) -> None:
+    texto = " ".join(str(mensagem or "").split()).strip()
+    if not texto:
+        return
+
+    horario = time.strftime("%H:%M:%S")
+    mensagens = progresso.setdefault("mensagens_andamento", [])
+    if isinstance(mensagens, list):
+        mensagens.append(f"[{horario}] {texto}")
+
+
+def _criar_notificador_andamento(
+    process_id: str | None,
+    progresso: dict[str, Any],
+    *,
+    etapa_atual: str,
+) -> Callable[[str], None]:
+    def notificar(mensagem: str) -> None:
+        _append_mensagem_andamento(progresso, mensagem)
+        if not process_id:
+            return
+
+        try:
+            repo.atualizar_processo(
+                process_id,
+                status="rodando",
+                etapa_atual=etapa_atual,
+                progresso=dict(progresso),
+            )
+        except Exception:
+            pass
+
+    return notificar
+
+
 async def _atualizar_processo(
     process_id: str | None,
     progresso: dict[str, Any],
@@ -98,16 +134,39 @@ async def ingerir_ticker(
         "periodos_cvm": 0,
         "eventos_agenda": 0,
         "dias_historico": 0,
+        "mensagens_andamento": [],
         "erros": [],
     }
     try:
+        notificar_identidade = _criar_notificador_andamento(
+            process_id,
+            progresso,
+            etapa_atual="identidade",
+        )
+        notificar_cvm = _criar_notificador_andamento(
+            process_id,
+            progresso,
+            etapa_atual="cvm",
+        )
+        notificar_mercado = _criar_notificador_andamento(
+            process_id,
+            progresso,
+            etapa_atual="mercado",
+        )
+        _append_mensagem_andamento(
+            progresso,
+            f"Iniciando cadastro do ticker {ticker_norm}.",
+        )
         await _atualizar_processo(
             process_id,
             progresso,
             status="rodando",
             etapa_atual="identidade",
         )
-        identidade = await buscar_identidade_emissor(ticker_norm)
+        identidade = await buscar_identidade_emissor(
+            ticker_norm,
+            status_callback=notificar_identidade,
+        )
         if identidade.get("status") != "SUCESSO":
             mensagem = (
                 f"Falha ao resolver identidade para {ticker_norm}: "
@@ -138,7 +197,12 @@ async def ingerir_ticker(
         await _to_thread(repo.salvar_emissor, identidade)
         _append_passo(progresso, "identidade")
         progresso["cnpj"] = cnpj
+        progresso["nome_emissor"] = identidade.get("nome_emissor")
         progresso["tipo_capital"] = tipo_capital
+        _append_mensagem_andamento(
+            progresso,
+            f"Emissor identificado: {identidade.get('nome_emissor') or ticker_norm} ({cnpj or 'sem CNPJ'}).",
+        )
         await _atualizar_processo(
             process_id,
             progresso,
@@ -154,11 +218,22 @@ async def ingerir_ticker(
         )
         if cod_cvm:
             try:
-                resultado_cvm = await buscar_dados_cvm(cnpj, str(cod_cvm))
+                notificar_cvm(
+                    f"Iniciando coleta de demonstracoes na CVM para o codigo {cod_cvm}."
+                )
+                resultado_cvm = await buscar_dados_cvm(
+                    cnpj,
+                    str(cod_cvm),
+                    status_callback=notificar_cvm,
+                )
                 linhas = await _to_thread(repo.periodos_para_linhas, cnpj, resultado_cvm)
                 await _to_thread(repo.salvar_demonstracoes, linhas)
                 progresso["periodos_cvm"] = len((resultado_cvm or {}).get("periodos") or {})
                 _append_passo(progresso, "cvm")
+                _append_mensagem_andamento(
+                    progresso,
+                    f"Etapa CVM concluida com {progresso['periodos_cvm']} periodos encontrados.",
+                )
             except Exception as exc:
                 _append_erro(progresso, f"Falha nao fatal em CVM para {ticker_norm}: {exc}")
         else:
@@ -166,6 +241,10 @@ async def ingerir_ticker(
                 "Emissor sem codigo CVM; demonstracoes virao apenas por PDFs."
             )
             _append_passo(progresso, "cvm_pulado")
+            _append_mensagem_andamento(
+                progresso,
+                "Etapa CVM pulada porque o emissor nao possui codigo CVM.",
+            )
         await _atualizar_processo(
             process_id,
             progresso,
@@ -180,11 +259,15 @@ async def ingerir_ticker(
             etapa_atual="mercado",
         )
         try:
+            notificar_mercado(
+                "Iniciando coleta de caracteristicas, agenda e historico de mercado."
+            )
             resultado_mkt = await buscar_dados_mercado(
                 ticker_norm,
                 deep=deep,
                 data_corte_deep=data_corte_deep,
                 datas_desconhecidas=None,
+                status_callback=notificar_mercado,
             )
             caracteristicas = (resultado_mkt or {}).get("caracteristicas") or {}
             agenda = (resultado_mkt or {}).get("agenda") or []
@@ -197,10 +280,19 @@ async def ingerir_ticker(
             progresso["eventos_agenda"] = len(agenda)
             progresso["dias_historico"] = len(historico)
             _append_passo(progresso, "mercado")
+            _append_mensagem_andamento(
+                progresso,
+                f"Etapa mercado concluida com {len(agenda)} eventos e {len(historico)} dias de historico.",
+            )
         except Exception as exc:
             _append_erro(progresso, f"Falha nao fatal em mercado para {ticker_norm}: {exc}")
 
         status_final = "concluido_com_erros" if progresso["erros"] else "concluido"
+        _append_passo(progresso, "finalizado")
+        _append_mensagem_andamento(
+            progresso,
+            f"Cadastro do ticker {ticker_norm} concluido.",
+        )
         await _atualizar_processo(
             process_id,
             progresso,
@@ -240,12 +332,14 @@ async def ingerir_documentos(
 ) -> dict[str, Any]:
     cnpj_norm = repo.normaliza_cnpj(cnpj)
     progresso: dict[str, Any] = {
+        "passos_concluidos": [],
         "quant_processados": 0,
         "qual_processados": 0,
         "qual_fallback": 0,
         "qual_sem_conteudo": 0,
         "pulados_quant": 0,
         "pulados_qual": 0,
+        "mensagens_andamento": [],
         "erros": [],
     }
     try:
@@ -271,6 +365,9 @@ async def ingerir_documentos(
                 "erros": progresso["erros"],
             }
 
+        progresso["cnpj"] = cnpj_norm
+        progresso["nome_emissor"] = emissor.get("nome")
+        _append_passo(progresso, "validacao_emissor")
         await _atualizar_processo(
             process_id,
             progresso,
@@ -293,6 +390,11 @@ async def ingerir_documentos(
 
         progresso["pulados_quant"] = len(arquivos) - len(novos_quant)
         progresso["pulados_qual"] = len(arquivos) - len(novos_qual)
+        _append_mensagem_andamento(
+            progresso,
+            "Check de duplicidade concluído. Preparando os próximos passos.",
+        )
+        _append_passo(progresso, "peek_hashes")
         await _atualizar_processo(
             process_id,
             progresso,
@@ -301,6 +403,11 @@ async def ingerir_documentos(
         )
 
         if novos_quant:
+            notificar_quant = _criar_notificador_andamento(
+                process_id,
+                progresso,
+                etapa_atual="ia_quant",
+            )
             await _atualizar_processo(
                 process_id,
                 progresso,
@@ -316,6 +423,7 @@ async def ingerir_documentos(
                     cnpj_norm,
                     novos_quant,
                     periodos_db,
+                    status_callback=notificar_quant,
                 )
                 linhas = await _to_thread(repo.periodos_para_linhas, cnpj_norm, resultado_q)
                 await _to_thread(repo.salvar_demonstracoes, linhas)
@@ -340,8 +448,16 @@ async def ingerir_documentos(
                     progresso,
                     f"Falha durante o processamento quantitativo de {cnpj_norm}: {exc}",
                 )
+            _append_passo(progresso, "ia_quant")
+        else:
+            _append_passo(progresso, "ia_quant")
 
         if novos_qual:
+            notificar_qual = _criar_notificador_andamento(
+                process_id,
+                progresso,
+                etapa_atual="ia_qual",
+            )
             await _atualizar_processo(
                 process_id,
                 progresso,
@@ -356,6 +472,7 @@ async def ingerir_documentos(
                         cnpj_norm,
                         nome,
                         conteudo,
+                        status_callback=notificar_qual,
                     )
                     if modo == "placeholder":
                         titulo = Path(nome).stem or nome
@@ -406,8 +523,13 @@ async def ingerir_documentos(
                     status="rodando",
                     etapa_atual="ia_qual",
                 )
+            _append_passo(progresso, "ia_qual")
+        else:
+            _append_passo(progresso, "ia_qual")
 
         status_final = "concluido_com_erros" if progresso["erros"] else "concluido"
+        _append_passo(progresso, "finalizado")
+        _append_mensagem_andamento(progresso, "Processamento concluído.")
         await _atualizar_processo(
             process_id,
             progresso,

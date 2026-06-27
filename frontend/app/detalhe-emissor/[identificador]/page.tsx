@@ -182,32 +182,13 @@ export default async function DetalheEmissorIdentificadorPage({
   }
 
   const { emissor } = issuerView;
-  const periodCount = Object.keys(
-    issuerView.demonstracoes_estruturadas.periodos ?? {},
-  ).length;
-  const resolutionDescription =
-    resolution.tipo_identificador === "ticker_deb"
-      ? `Ticker de emissão ${resolution.identificador}`
-      : resolution.tipo_identificador === "ticker_acao"
-        ? `Ticker de ação ${resolution.identificador}`
-        : `CNPJ ${formatCnpj(resolution.cnpj)}`;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Detalhe do Emissor"
-        title={emissor.nome}
-        description={`Visão consolidada do emissor ${formatCnpj(emissor.cnpj)}. Abertura resolvida por ${resolutionDescription}.`}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/detalhe-emissor"
-              className="inline-flex rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm text-[var(--ink)] transition hover:border-[var(--line-strong)]"
-            >
-              Nova busca
-            </Link>
-          </div>
-        }
+        title="Leitura completa do emissor filtrado"
+        description={`CNPJ: ${formatCnpj(emissor.cnpj)}`}
       />
 
       <IdentifierSearchForm
@@ -215,38 +196,29 @@ export default async function DetalheEmissorIdentificadorPage({
         buttonLabel="Buscar outro emissor"
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Debêntures
+      <section className="flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-[var(--muted)]">
+            Emissor
           </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {issuerView.debentures.length}
-          </p>
+          <h2 className="max-w-4xl text-3xl font-semibold tracking-[0.01em] text-[var(--ink)] md:text-4xl">
+            {emissor.nome}
+          </h2>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
+            <span>CNPJ: {formatCnpj(emissor.cnpj)}</span>
+            <span>Última atualização: {formatDateTime(emissor.atualizado_em)}</span>
+          </div>
         </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Linhas financeiras
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {issuerView.demonstracoes_financeiras.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Períodos financeiros
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {periodCount}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-card)]">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-            Markdowns
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-[0.01em] text-[var(--ink)]">
-            {issuerView.markdowns.length}
-          </p>
+
+        <div className="lg:min-w-[13rem]">
+          <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
+              Debêntures
+            </p>
+            <p className="mt-2 text-lg font-semibold tracking-[0.01em] text-[var(--ink)]">
+              {issuerView.debentures.length}
+            </p>
+          </div>
         </div>
       </section>
 

@@ -4,15 +4,15 @@
   --font-sans: var(--font-gotham), Helvetica, Arial, sans-serif;
   --font-mono: var(--font-gotham), Helvetica, Arial, sans-serif;
 
-  --color-chrome-bg: var(--chrome-bg);
-  --color-chrome-ink: var(--chrome-ink);
-  --color-chrome-muted: var(--chrome-muted);
-  --color-chrome-line: var(--chrome-line);
-  --color-chrome-item-bg: var(--chrome-item-bg);
-  --color-chrome-item-bg-hover: var(--chrome-item-bg-hover);
-  --color-chrome-item-line: var(--chrome-item-line);
+  --color-chrome-bg: #0a2300;
+  --color-chrome-ink: #fff0dc;
+  --color-chrome-muted: rgba(255, 240, 220, 0.66);
+  --color-chrome-line: rgba(255, 240, 220, 0.18);
+  --color-chrome-item-bg: rgba(255, 240, 220, 0.10);
+  --color-chrome-item-bg-hover: rgba(255, 240, 220, 0.20);
+  --color-chrome-item-line: rgba(255, 240, 220, 0.30);
 
-  --color-accent: var(--accent);
+  --color-accent: #0a2300;
 }
 
 :root {
@@ -34,6 +34,10 @@
   --chrome-item-bg: rgba(255, 240, 220, 0.10);       /* fundo do item inativo */
   --chrome-item-bg-hover: rgba(255, 240, 220, 0.20); /* hover */
   --chrome-item-line: rgba(255, 240, 220, 0.30);     /* borda do item inativo */
+  --chrome-tab-idle-bg: #b8b6b1;
+  --chrome-tab-idle-bg-hover: #c6c4bf;
+  --chrome-tab-idle-line: #dfddd7;
+  --chrome-tab-idle-ink: #0a2300;
   --success: #0a2300;
   --success-bg: rgba(10, 35, 0, 0.08);
   --success-line: rgba(10, 35, 0, 0.22);
@@ -132,6 +136,16 @@ textarea {
 
 ::selection {
   background: rgba(10, 35, 0, 0.15);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 @media (prefers-reduced-motion: reduce) {

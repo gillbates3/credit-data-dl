@@ -19,6 +19,7 @@ import csv
 import re
 import time
 from pathlib import Path
+from typing import Callable
 import httpx
 from playwright.async_api import async_playwright
 
@@ -30,6 +31,18 @@ CVM_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.cs
 _CVM_CACHE = []
 _CVM_CACHE_TS = 0
 CACHE_TTL = 86400  # 24 horas
+
+
+def _emit_status(
+    mensagem: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
+    if not status_callback:
+        return
+    try:
+        status_callback(" ".join(str(mensagem or "").split()))
+    except Exception:
+        pass
 
 def normaliza_cnpj(cnpj: str) -> str:
     """Remove pontuações e retorna apenas os números do CNPJ."""
@@ -47,16 +60,20 @@ def carregar_overrides() -> dict:
             return {}
     return {}
 
-async def obter_cadastro_cvm() -> list[dict]:
+async def obter_cadastro_cvm(
+    status_callback: Callable[[str], None] | None = None,
+) -> list[dict]:
     """Baixa o cadastro completo da CVM ou retorna do In-Memory Cache."""
     global _CVM_CACHE, _CVM_CACHE_TS
     agora = time.time()
     
     # Retorna do cache se existir e tiver menos de 24h
     if _CVM_CACHE and (agora - _CVM_CACHE_TS) < CACHE_TTL:
+        _emit_status("Cadastro CVM em cache. Reutilizando base de companhias.", status_callback)
         return _CVM_CACHE
         
     print("[+] Cache CVM vazio ou expirado. Baixando da fonte (~3MB)...")
+    _emit_status("Cache CVM vazio ou expirado. Baixando base de companhias...", status_callback)
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.get(CVM_URL)
         resp.raise_for_status()
@@ -69,6 +86,10 @@ async def obter_cadastro_cvm() -> list[dict]:
         _CVM_CACHE = linhas
         _CVM_CACHE_TS = agora
         print(f"[+] Download CVM concluído e carregado em RAM ({len(linhas)} registros).")
+        _emit_status(
+            f"Base CVM carregada em memoria com {len(linhas)} registros.",
+            status_callback,
+        )
         return _CVM_CACHE
 
 def resolver_cvm(cadastro: list[dict], cnpj: str) -> dict | None:
@@ -113,7 +134,10 @@ def resolver_cvm(cadastro: list[dict], cnpj: str) -> dict | None:
     # Fallback: retorna o primeiro se não conseguir desempatar inteligentemente
     return candidatos[0]
 
-async def buscar_identidade_emissor(ticker: str) -> dict:
+async def buscar_identidade_emissor(
+    ticker: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> dict:
     """
     Função principal e idempotente do Módulo de Identidade.
     Extrai o CNPJ da ANBIMA e cruza com a CVM na memória RAM.
@@ -130,6 +154,10 @@ async def buscar_identidade_emissor(ticker: str) -> dict:
     }
     
     print(f"[{ticker_clean}] Buscando características na ANBIMA...")
+    _emit_status(
+        f"Consultando ANBIMA para identificar o emissor do ticker {ticker_clean}...",
+        status_callback,
+    )
     # 1. Busca ANBIMA (Playwright Headless)
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -174,11 +202,19 @@ async def buscar_identidade_emissor(ticker: str) -> dict:
         
     if not identidade["cnpj_emissor"]:
         identidade["status"] = "ERRO_ANBIMA_SEM_CNPJ"
+        _emit_status(
+            f"A ANBIMA nao retornou CNPJ para o ticker {ticker_clean}.",
+            status_callback,
+        )
         return identidade
         
     # 2. Busca CVM (In-Memory Cache)
     print(f"[{ticker_clean}] CNPJ encontrado: {identidade['cnpj_emissor']}. Resolvendo CVM...")
-    cadastro_cvm = await obter_cadastro_cvm()
+    _emit_status(
+        f"CNPJ identificado: {identidade['cnpj_emissor']}. Resolvendo cadastro CVM...",
+        status_callback,
+    )
+    cadastro_cvm = await obter_cadastro_cvm(status_callback=status_callback)
     cvm_record = resolver_cvm(cadastro_cvm, identidade["cnpj_emissor"])
     
     if cvm_record:
@@ -194,8 +230,21 @@ async def buscar_identidade_emissor(ticker: str) -> dict:
             identidade["tipo_capital"] = "Fechado"
         else:
             identidade["tipo_capital"] = "Aberto"
+        _emit_status(
+            f"Cadastro CVM localizado para {ticker_clean}: codigo {identidade['cod_cvm'] or 'n/d'}.",
+            status_callback,
+        )
+    else:
+        _emit_status(
+            f"Nenhum cadastro CVM encontrado para o CNPJ {identidade['cnpj_emissor']}.",
+            status_callback,
+        )
         
     identidade["status"] = "SUCESSO"
+    _emit_status(
+        f"Identidade do emissor {ticker_clean} concluida.",
+        status_callback,
+    )
     return identidade
 
 

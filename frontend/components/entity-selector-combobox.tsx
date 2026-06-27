@@ -73,7 +73,6 @@ export function EntitySelectorCombobox({
         ? {
             label: "Ativo ou emissor",
             placeholder: "Digite ticker, CNPJ ou nome do emissor",
-            buttonLabel: "Abrir",
             helper:
               "Comece digitando para filtrar por ticker, CNPJ ou emissor, ou clique na seta para navegar pela lista completa em ordem alfabética.",
             emptyListLabel: "Lista completa de ativos e emissores",
@@ -87,11 +86,10 @@ export function EntitySelectorCombobox({
               "Informe um ticker, CNPJ ou nome do emissor para pesquisar.",
           }
         : {
-            label: "CNPJ, ativo ou emissor",
+            label: "Ativo ou emissor",
             placeholder: "Digite CNPJ, ticker ou nome do emissor",
-            buttonLabel: "Abrir emissor",
             helper:
-              "Digite um CNPJ, ticker ou nome do emissor para abrir a visão consolidada, ou use a seta para navegar pela lista disponível.",
+              "Comece digitando para filtrar por ticker, CNPJ ou emissor, ou clique na seta para navegar pela lista disponível.",
             emptyListLabel: "Lista completa de emissores e ativos",
             loadingSearch: "Pesquisando emissores...",
             loadingAll: "Carregando emissores cadastrados...",
@@ -272,7 +270,7 @@ export function EntitySelectorCombobox({
       onSubmit={handleSubmit}
       className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-[var(--shadow-card)]"
     >
-      <div className="space-y-2">
+      <div className="space-y-3">
         <label
           htmlFor={listboxId}
           className="font-mono text-xs uppercase tracking-[0.22em] text-[var(--muted)]"
@@ -298,7 +296,7 @@ export function EntitySelectorCombobox({
             }}
             placeholder={ui.placeholder}
             autoComplete="off"
-            className="w-full rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 pr-48 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--line-strong)] md:pr-52"
+            className="w-full rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 pr-16 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--line-strong)]"
           />
           <button
             type="button"
@@ -307,15 +305,23 @@ export function EntitySelectorCombobox({
               if (error) setError(null);
             }}
             aria-label={isOpen ? "Fechar lista de opções" : "Mostrar lista de opções"}
-            className="absolute right-24 top-2 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-white text-base text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:bg-[var(--panel)] hover:text-[var(--ink)] md:right-28"
+            className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:bg-[var(--panel)] hover:text-[var(--ink)]"
           >
-            ▾
-          </button>
-          <button
-            type="submit"
-            className="absolute right-2 top-2 inline-flex h-10 min-w-[6rem] items-center justify-center rounded-full bg-[var(--accent)] px-4 text-sm font-medium text-[var(--on-accent)] transition hover:bg-[var(--accent-strong)]"
-          >
-            {ui.buttonLabel}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              className="h-[0.95rem] w-[0.95rem]"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4.25 6.5 8 10.25 11.75 6.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
 
           {isOpen || isLoading ? (

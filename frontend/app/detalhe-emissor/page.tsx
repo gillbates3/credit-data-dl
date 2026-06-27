@@ -6,8 +6,8 @@ export default function DetalheEmissorPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Detalhe do Emissor"
-        title="Visão completa do emissor"
-        description="Busque por CNPJ, ticker ou nome do emissor para abrir a visão consolidada com debêntures vinculadas, dados financeiros, manifestos quantitativos e markdowns qualitativos."
+        title="Selecione um emissor"
+        description="Use a busca inteligente abaixo para filtrar por ticker, CNPJ ou emissor."
       />
 
       <IdentifierSearchForm

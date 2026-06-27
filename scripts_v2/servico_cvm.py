@@ -24,6 +24,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 import httpx
 
 SCRIPT_DIR = Path(__file__).parent
@@ -58,6 +59,18 @@ TABELA_PARA_CHAVE = {
 _CVM_CACHE = {}
 CACHE_TTL = 86400  # 24 horas
 
+
+def _emit_status(
+    mensagem: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
+    if not status_callback:
+        return
+    try:
+        status_callback(" ".join(str(mensagem or "").split()))
+    except Exception:
+        pass
+
 def normaliza_cod(cod: str) -> str:
     s = cod.strip()
     return str(int(s)) if s.isdigit() else s
@@ -76,7 +89,10 @@ def parse_valor(valor_str: str) -> float | None:
     except ValueError:
         return None
 
-async def baixar_zip_cvm(url: str) -> bytes | None:
+async def baixar_zip_cvm(
+    url: str,
+    status_callback: Callable[[str], None] | None = None,
+) -> bytes | None:
     """Baixa um ZIP da CVM usando cache em memória."""
     global _CVM_CACHE
     agora = time.time()
@@ -84,13 +100,25 @@ async def baixar_zip_cvm(url: str) -> bytes | None:
     if url in _CVM_CACHE:
         dados, ts = _CVM_CACHE[url]
         if (agora - ts) < CACHE_TTL:
+            _emit_status(
+                f"Arquivo CVM em cache: {url.split('/')[-1]}",
+                status_callback,
+            )
             return dados
             
     print(f"    [+] Baixando: {url.split('/')[-1]} (~15-20MB)...")
+    _emit_status(
+        f"Baixando arquivo da CVM: {url.split('/')[-1]}",
+        status_callback,
+    )
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.get(url, follow_redirects=True)
             if resp.status_code == 404:
+                _emit_status(
+                    f"Arquivo da CVM indisponivel para {url.split('/')[-1]}.",
+                    status_callback,
+                )
                 return None
             resp.raise_for_status()
             
@@ -99,6 +127,10 @@ async def baixar_zip_cvm(url: str) -> bytes | None:
             return conteudo
     except Exception as e:
         print(f"    [!] Erro ao baixar {url}: {e}")
+        _emit_status(
+            f"Falha ao baixar {url.split('/')[-1]} da CVM.",
+            status_callback,
+        )
         return None
 
 def extrair_csv_filtrado(zip_bytes: bytes, tabela: str, cod_cvm_alvo: str) -> list[dict]:
@@ -165,7 +197,12 @@ def processar_linhas(linhas: list[dict]) -> dict[str, dict]:
         
     return por_periodo
 
-async def buscar_dados_cvm(cnpj: str, codigo_cvm: str, anos_retroativos: int = 2) -> dict:
+async def buscar_dados_cvm(
+    cnpj: str,
+    codigo_cvm: str,
+    anos_retroativos: int = 2,
+    status_callback: Callable[[str], None] | None = None,
+) -> dict:
     """Busca dados contábeis (ITR/DFP) para um CNPJ e código CVM na base de dados abertos."""
     cnpj_norm = normaliza_cnpj(cnpj)
     cod_norm = normaliza_cod(codigo_cvm)
@@ -178,6 +215,10 @@ async def buscar_dados_cvm(cnpj: str, codigo_cvm: str, anos_retroativos: int = 2
         "cod_cvm": cod_norm,
         "periodos": {}
     }
+    _emit_status(
+        f"Consultando demonstracoes da CVM para o codigo {cod_norm}...",
+        status_callback,
+    )
     
     dados: dict[str, dict] = defaultdict(lambda: {"tipo": None, "demonstracoes": {}})
     
@@ -188,11 +229,15 @@ async def buscar_dados_cvm(cnpj: str, codigo_cvm: str, anos_retroativos: int = 2
             nome_zip = f"{tipo}_cia_aberta_{ano}.zip"
             url = BASE_URL[tipo] + nome_zip
             
-            zip_bytes = await baixar_zip_cvm(url)
+            zip_bytes = await baixar_zip_cvm(url, status_callback=status_callback)
             if not zip_bytes:
                 continue
                 
             print(f"    [*] Extraindo CSVs ({tipo.upper()} {ano}) para CVM {cod_norm}...")
+            _emit_status(
+                f"Extraindo demonstracoes {tipo.upper()} de {ano} para o codigo CVM {cod_norm}...",
+                status_callback,
+            )
             
             for tabela in TABELAS_DFP_ITR:
                 chave_dem = TABELA_PARA_CHAVE.get(tabela)
@@ -224,6 +269,10 @@ async def buscar_dados_cvm(cnpj: str, codigo_cvm: str, anos_retroativos: int = 2
     # Ordena os períodos do mais recente para o mais antigo
     for periodo in sorted(dados.keys(), reverse=True):
         resultado["periodos"][periodo] = dict(dados[periodo])
+    _emit_status(
+        f"Consulta CVM concluida com {len(resultado['periodos'])} periodos encontrados.",
+        status_callback,
+    )
         
     return resultado
 

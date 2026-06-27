@@ -62,7 +62,7 @@ export function DataTable<T>({
                   <td
                     key={column.key}
                     className={cn(
-                      "border-b border-[var(--line)] px-4 py-4 align-top text-sm text-[var(--ink)] last:border-b-0 group-last:border-b-0",
+                      "border-b border-[var(--line)] px-4 py-4 align-top text-sm text-[var(--ink)] group-last:border-b-0",
                       column.cellClassName,
                     )}
                   >
