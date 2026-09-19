@@ -27,23 +27,36 @@ OCR para gerar:
 > O sintético é um **piso**: por ter camada de texto, todos acertam os números. O que
 > diferencia é a **estrutura** (e o custo de operação de cada um).
 
-### Documentos reais (Docling — baseline medido em CPU)
-| Documento | Tipo | Resultado Docling |
-|---|---|---|
-| `alares_3` (DF CVM, pág 3–8) | digital, tabelas densas | Balanço com **hierarquia de `cd_conta` (1, 1.01, 1.01.01…)** e 3 períodos alinhados; 34,6 s; 1 célula com glitch. Mapeia quase direto para o schema `cd_conta/ds_conta/valor`. |
-| `ot_2` (ata, 4 pág) | **escaneado (OCR)** | OCR bom no texto limpo; degrada em carimbos/assinaturas; 83 s. |
-| `alares_1` (deck de resultados) | digital, dados em gráficos | narrativa OK; números em gráficos **não saem** (exigem VLM de chart, desligado por padrão em todos os parsers). |
+### Documentos reais — head-to-head Docling × Marker (CONCLUÍDO, CPU)
+Fechado localmente (desktop Windows 11, **CPU-only, sem GPU NVIDIA**) após instalar o binário
+`llama-server` que faltava na nuvem. Versões: docling 2.129.0, marker-pdf 2.0.0, surya-ocr 0.22.1,
+llama.cpp build b11056 (win-cpu-x64). Os `.md` estão em `outputs/reais/` (`*.docling.md` / `*.marker.md`).
 
-Os `.md` correspondentes estão em `outputs/`.
+| Caso | Métrica | Docling | Marker | Vencedor |
+|---|---|---|---|---|
+| `alares_3` DF CVM (6 pág, digital) | tempo | 155,3 s (25,9 s/pág) | **90,3 s (15,1 s/pág)** | Marker |
+| | estrutura `cd_conta` | hierarquia OK, mas **~6 células com code-bleed** (cód. vaza p/ descrição; ex. `2.01.03.01.01 Imposto de \| Renda…`) | **coluna `cd_conta` 100% limpa, 0 glitches** | **Marker** |
+| | valores / períodos | 3 períodos alinhados, totais na tabela | idênticos (mesmos 756 `\|`), totais na tabela | empate |
+| | detalhe | preserva subtítulo "(Reais Mil)" | omite "(Reais Mil)" | Docling (menor) |
+| `ot_2` ata (4 pág, **escaneado/OCR**) | tempo | **159,7 s (39,9 s/pág)** | 934,7 s (233,7 s/pág, ~6×) | Docling |
+| | fidelidade OCR | **degrada grave**: perde a cláusula (I) da Ordem do Dia, ref. "Resolução CVM 81" e "art. 76 §2º" viram lixo (`o o oo o oro…`); erros de caixa | **transcrição fiel** do texto jurídico, incl. cláusula (I) inteira, `US$100.000.000,00`, negrito/itálico e assinaturas | **Marker** |
+| `alares_1` deck (digital, gráficos) | números em gráficos | não saem | não saem (VLM de chart desligado) | empate (limite universal) |
 
-### Pendência: Marker/MinerU nos documentos REAIS
-No ambiente de nuvem (CPU, sem `brew`, releases do GitHub bloqueadas pelo proxy) **não foi
-possível** completar Marker/MinerU nos reais:
-- **Marker** exige o binário nativo **`llama-server` (llama.cpp)** — o surya 0.22 o spawna
-  para inferência de layout/OCR. Sem ele: `SpawnError: llama-server binary not found`.
-- **MinerU 4.x** exige um **parse-server VLM** (na prática GPU/vLLM).
+**Veredito:**
+- **DF estruturada (`alares_3`): Marker SUPERA o Docling** — mesma hierarquia e valores, porém sem os
+  glitches de code-bleed do Docling, e ~40% mais rápido. Mapeia direto p/ `cd_conta/ds_conta/valor`.
+- **OCR de escaneado (`ot_2`): Marker SUPERA em qualidade, mas PERDE em custo** — o VLM `surya-ocr-2`
+  recupera trechos que o OCR do Docling destrói (crítico p/ crédito: sem a cláusula (I) a ata é inútil),
+  ao custo de **~6× mais tempo em CPU**. Numa máquina com GPU o tempo do Marker cairia drasticamente.
+- **Deck (`alares_1`): empate** — nenhum parser lê números dentro de gráficos sem VLM de chart.
 
-Rodar localmente (desktop com o binário instalado, e idealmente GPU) fecha o head-to-head.
+> **Recomendação operacional:** Marker é o melhor motor de qualidade para DFs e escaneados. Em CPU,
+> o OCR VLM do Marker é caro (~4 min/pág aqui pode variar); considere Docling como fallback rápido em
+> escaneados de baixa criticidade, ou rodar Marker em GPU. Para DFs digitais, Marker é melhor e mais rápido.
+
+### Nota: MinerU nos reais (não executado)
+MinerU 4.x exige **parse-server VLM (GPU/vLLM)**; este desktop não tem GPU NVIDIA, então ficou fora do
+head-to-head dos reais (o resultado do sintético em `outputs/sintetico/` permanece como referência).
 
 ## Como rodar
 
@@ -59,8 +72,16 @@ brew install llama.cpp
 # Linux: baixe o release ubuntu-x64 de https://github.com/ggml-org/llama.cpp/releases
 #        e ponha `llama-server` no PATH, OU:
 export LLAMA_CPP_BINARY=/caminho/para/llama-server
+# Windows (testado, funciona): baixe o asset `llama-<build>-bin-win-cpu-x64.zip`
+#   de https://github.com/ggml-org/llama.cpp/releases (build b11056 validada),
+#   extraia e ponha a pasta no PATH, OU: set LLAMA_CPP_BINARY=C:\...\llama-server.exe
 llama-server --version   # deve responder sem erro
 ```
+
+> Como o surya localiza o binário (surya 0.22.1): `settings.LLAMA_CPP_BINARY` (default `llama-server`)
+> resolvido via `shutil.which` → basta estar no PATH. Na 1ª execução com OCR, o surya **baixa
+> sozinho** o GGUF `datalab-to/surya-ocr-2-gguf` (modelo + mmproj) do HF e sobe o `llama-server`
+> como servidor VLM local. A build b11056 rodou sem o bug de grammar `\d` (issue surya #542).
 
 ### Baixar os PDFs de teste (não versionados; terceiros)
 Salve em `pdfs/`:

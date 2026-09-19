@@ -23,7 +23,16 @@ from marker.output import text_from_rendered
 pdf, out = sys.argv[1], sys.argv[2]
 config = {}
 if len(sys.argv) > 3:
-    config["page_range"] = sys.argv[3]
+    # marker >=2.0 espera page_range como lista de inteiros 0-indexados
+    # (versões antigas aceitavam a string "ini-fim"). Aceita "2-7", "2", "0,5-9".
+    pages = []
+    for part in sys.argv[3].split(","):
+        if "-" in part:
+            a, b = part.split("-")
+            pages.extend(range(int(a), int(b) + 1))
+        else:
+            pages.append(int(part))
+    config["page_range"] = pages
 
 t0 = time.time()
 converter = PdfConverter(artifact_dict=create_model_dict(), config=config)
