@@ -6,7 +6,7 @@ __pycache__/
 frontend/node_modules/
 frontend/.next/
 frontend/.vercel/
-tmp/*.log
+tmp/
 
 # Dados e artefatos de teste
 data/
