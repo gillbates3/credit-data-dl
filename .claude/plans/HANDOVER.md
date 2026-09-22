@@ -171,9 +171,17 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 
 **Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
 
-**Escopo mantido:** trilha **quantitativa** (números JSON → `demonstracoes_financeiras`) **continua no Gemini** — não é conversão para Markdown. Geração de **título** continua no Gemini.
+**Trilha quantitativa agora consome o MESMO Markdown (Markdown como fonte única):** a conversão documento→Markdown é feita **uma vez** por arquivo e alimenta as **duas** trilhas. A quant **não lê mais o PDF diretamente** — removidos `pdfplumber` e o modo **Gemini Vision** dela. O Gemini na quant passa a **estruturar o Markdown → JSON CVM** (mapear cd_conta/ds_conta/valor, BPA/BPP/DRE/DFC/DVA, períodos). Geração de **título** continua no Gemini.
 
-**Deps:** `docling`, `pypdfium2` adicionados ao `requirements.txt`. **Pendências:** (a) teste end-to-end real via API com Supabase (não rodado nesta sessão — precisa das chaves/serviço); (b) o loader do CLI `docs` do orquestrador usa `carregar_arquivos_em_memoria` da trilha **quant** (só `*.pdf`) — o caminho real (upload pela API) passa os bytes direto, então não afeta produção, mas o teste local via CLI não pega não-PDF; (c) avaliar paralelismo de páginas no Jina se latência incomodar.
+**Gate da quant deixou de ser por NOME → passou a ser por CONTEÚDO:** `servico_ia_quantitativa.markdown_tem_sinais_financeiros(markdown)` (≥2 palavras-chave financeiras distintas). Removidos `is_financial_pdf_name` e as listas de keywords de nome. Backstop: o Gemini retorna `{"periodos": {}}` se não houver dados. Isso captura DF em docs que o filtro por nome excluía (ex.: rating/escritura com quadro financeiro). Novas funções: `extrair_quant_de_markdown(cnpj, nome, markdown, periodos_db, status_callback)`, `call_ai_with_markdown(...)`. Removida a `extrair_dados_quantitativos` (batch por bytes).
+
+**Orquestrador unificado:** `ingerir_documentos` agora tem **um loop por arquivo** (etapa `ia_qual`): converte 1×; salva quali (compêndio + título); se `precisa_quant` e há sinais, roda a quant sobre o Markdown e **consolida** os períodos; ao fim persiste o quant uma vez (`salvar_demonstracoes` + `salvar_compendio_quantitativo` + `definir_titulo_quantitativo`). Dedup por hash **independente por trilha** (arquivo entra se for novo p/ pelo menos uma). Passos `ia_quant`+`ia_qual` mantidos em `passos_concluidos` (não quebra o front/stepper). CLI `docs` agora usa o loader da qualitativa (todos os formatos).
+
+**Validação empírica (2026-09-21) — quant OLD (pdfplumber→Gemini) × NEW (Jina→Markdown→Gemini) em 3 DFs reais (Aguas Alta Floresta, Aguas de Piquete, ESAP):** números-chave **idênticos** nos 3 (Ativo Total, PL 2025/2024). Contagem de contas comparável (AAF 160→164; Piquete 146=146; ESAP 158→146 — ruído normal do Gemini). **O risco de OCR em dígito não se materializou.** Tempo: o OCR do Jina é **compartilhado** com a quali (antes o PDF era processado 2×), então no pipeline unificado a quant não adiciona custo de conversão.
+
+**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks quali:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
+
+**Deps:** `docling`, `pypdfium2` no `requirements.txt`. **Pendências:** (a) teste end-to-end real via API+Supabase (não rodado — precisa das chaves/serviço); (b) avaliar paralelismo de páginas no Jina se latência incomodar; (c) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
 
 Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engines de OCR na nuvem — DeepSeek-OCR-2, Chandra, jina-ocr-v1, etc.). jina-ocr-v1 ficou como melhor custo×velocidade×fidelidade p/ tabelas.
 
@@ -185,12 +193,15 @@ Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engin
 
 `POST /cadastro/documentos` → lê bytes → `criar_processo` (pendente) → 202 → background `ingerir_documentos`:
 1. `validacao_emissor` (emissor precisa existir; senão job=`erro`).
-2. `peek_hashes` (dedup por MD5, por trilha).
-3. `ia_quant` — só arquivos financeiros (heurística de nome): Gemini→JSON CVM → `demonstracoes_financeiras` + manifesto quant.
-4. `ia_qual` — **todos** os arquivos: documento→markdown fiel via `extrair_markdown_documento` (dispatcher por extensão em `servico_ia_qualitativa.py`) — **PDF ⇒ Jina OCR (`jina-ocr-v1`), página a página rasterizada (pypdfium2, 150 DPI), tabelas em HTML; não-PDF ⇒ Docling** (`servico_docling.py`). Não há mais detecção de "escaneado": todo PDF é OCR-izado (o Jina rasteriza+OCR por padrão, cobrindo digital e escaneado). Fallbacks garantem "nunca vazio": PDF sem retorno do Jina → texto digital bruto (pdfplumber) → placeholder; não-PDF sem retorno do Docling → placeholder. `modo ∈ {"jina","docling","texto_bruto","placeholder"}`. **Histórico (não reintroduzir):** a antiga trilha Gemini (texto por lotes 8 pág. / Vision por lotes 15 pág., roteada por `is_scanned`) foi **removida** desta trilha em 2026-09-21 (§8k).
+2. `peek_hashes` (dedup por MD5, **por trilha**; arquivo entra se for novo p/ pelo menos uma trilha).
+3–4. **Loop unificado por arquivo** (etapa `ia_qual`; ao fim marca `ia_quant`+`ia_qual` em `passos_concluidos`):
+   - **Conversão única** documento→markdown via `extrair_markdown_documento` (dispatcher por extensão em `servico_ia_qualitativa.py`) — **PDF ⇒ Jina OCR (`jina-ocr-v1`), página a página rasterizada (pypdfium2, 150 DPI), tabelas em HTML; não-PDF ⇒ Docling** (`servico_docling.py`). Não há detecção de "escaneado": todo PDF é OCR-izado (o Jina rasteriza+OCR por padrão). `modo ∈ {"jina","docling","texto_bruto","placeholder"}`.
+   - **Quali** (se novo p/ a trilha): salva o markdown (`salvar_compendio_qualitativo`) + título (Gemini). Fallbacks "nunca vazio": PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
+   - **Quant** (se novo p/ a trilha e `modo != placeholder`): **gate por conteúdo** (`markdown_tem_sinais_financeiros`, ≥2 keywords) → `extrair_quant_de_markdown` (Gemini estrutura o **mesmo markdown** → JSON CVM). Consolida os períodos; ao fim do loop persiste uma vez → `demonstracoes_financeiras` + manifesto quant. **Não** lê mais o PDF direto (sem pdfplumber/Vision na quant); **não** filtra por nome de arquivo.
+   - **Histórico (não reintroduzir):** trilhas Gemini antigas — quali (texto lotes 8p / Vision 15p por `is_scanned`) e quant (pdfplumber-texto / Vision + filtro por nome) — **removidas** em 2026-09-21 (§8k).
 5. `finalizado` → `concluido` | `concluido_com_erros`.
 
-Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotência por hash, por trilha. Durante o processamento, cada sub-passo emite status humano via `status_callback` → grava em `progresso.mensagem_andamento` (ver §8i). Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
+Cada documento é convertido **uma vez** e alimenta as **duas trilhas** (financeiro = dados + markdown, da mesma fonte). Idempotência por hash, por trilha. Durante o processamento, cada sub-passo emite status humano via `status_callback` → grava em `progresso.mensagem_andamento` (ver §8i). Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
 
 ---
 

@@ -20,22 +20,29 @@ try:
     from scripts_v2 import servico_repositorio as repo
     from scripts_v2.servico_cvm import buscar_dados_cvm
     from scripts_v2.servico_ia_qualitativa import (
+        carregar_arquivos_em_memoria,
         extrair_markdown_documento,
         gerar_titulo_documento,
     )
     from scripts_v2.servico_ia_quantitativa import (
-        carregar_arquivos_em_memoria,
-        extrair_dados_quantitativos,
+        criar_json_base,
+        extrair_quant_de_markdown,
+        merge_periods,
     )
     from scripts_v2.servico_identidade import buscar_identidade_emissor
     from scripts_v2.servico_mercado import buscar_dados_mercado
 except ImportError:
     import servico_repositorio as repo
     from servico_cvm import buscar_dados_cvm
-    from servico_ia_qualitativa import extrair_markdown_documento, gerar_titulo_documento
-    from servico_ia_quantitativa import (
+    from servico_ia_qualitativa import (
         carregar_arquivos_em_memoria,
-        extrair_dados_quantitativos,
+        extrair_markdown_documento,
+        gerar_titulo_documento,
+    )
+    from servico_ia_quantitativa import (
+        criar_json_base,
+        extrair_quant_de_markdown,
+        merge_periods,
     )
     from servico_identidade import buscar_identidade_emissor
     from servico_mercado import buscar_dados_mercado
@@ -377,19 +384,22 @@ async def ingerir_documentos(
         hashes_quant = await _to_thread(repo.buscar_hashes_quantitativo, cnpj_norm)
         hashes_qual = await _to_thread(repo.buscar_hashes_qualitativo, cnpj_norm)
 
-        novos_quant = [
+        # Um arquivo entra no processamento se for novo para PELO MENOS uma trilha.
+        # A conversao documento->Markdown e feita UMA vez e alimenta as duas trilhas.
+        pendentes = [
             (nome, conteudo)
             for nome, conteudo in arquivos
-            if force or _md5(conteudo) not in hashes_quant
-        ]
-        novos_qual = [
-            (nome, conteudo)
-            for nome, conteudo in arquivos
-            if force or _md5(conteudo) not in hashes_qual
+            if force
+            or _md5(conteudo) not in hashes_qual
+            or _md5(conteudo) not in hashes_quant
         ]
 
-        progresso["pulados_quant"] = len(arquivos) - len(novos_quant)
-        progresso["pulados_qual"] = len(arquivos) - len(novos_qual)
+        progresso["pulados_quant"] = sum(
+            1 for _, conteudo in arquivos if not force and _md5(conteudo) in hashes_quant
+        )
+        progresso["pulados_qual"] = sum(
+            1 for _, conteudo in arquivos if not force and _md5(conteudo) in hashes_qual
+        )
         _append_mensagem_andamento(
             progresso,
             "Check de duplicidade concluído. Preparando os próximos passos.",
@@ -402,58 +412,8 @@ async def ingerir_documentos(
             etapa_atual="peek_hashes",
         )
 
-        if novos_quant:
-            notificar_quant = _criar_notificador_andamento(
-                process_id,
-                progresso,
-                etapa_atual="ia_quant",
-            )
-            await _atualizar_processo(
-                process_id,
-                progresso,
-                status="rodando",
-                etapa_atual="ia_quant",
-            )
-            try:
-                periodos_db = sorted(
-                    await _to_thread(repo.buscar_periodos_demonstracoes, cnpj_norm)
-                )
-                resultado_q = await _to_thread(
-                    extrair_dados_quantitativos,
-                    cnpj_norm,
-                    novos_quant,
-                    periodos_db,
-                    status_callback=notificar_quant,
-                )
-                linhas = await _to_thread(repo.periodos_para_linhas, cnpj_norm, resultado_q)
-                await _to_thread(repo.salvar_demonstracoes, linhas)
-
-                processed_files = (resultado_q or {}).get("processed_files") or []
-                for arquivo_processado in processed_files:
-                    await _to_thread(
-                        repo.salvar_compendio_quantitativo,
-                        cnpj_norm,
-                        arquivo_processado["nome_arquivo"],
-                        arquivo_processado["hash_md5"],
-                        force,
-                    )
-
-                progresso["quant_processados"] = len(processed_files)
-                progresso["pulados_quant"] += max(
-                    0, len(novos_quant) - len(processed_files)
-                )
-            except Exception as exc:
-                progresso["pulados_quant"] += len(novos_quant)
-                _append_erro(
-                    progresso,
-                    f"Falha durante o processamento quantitativo de {cnpj_norm}: {exc}",
-                )
-            _append_passo(progresso, "ia_quant")
-        else:
-            _append_passo(progresso, "ia_quant")
-
-        if novos_qual:
-            notificar_qual = _criar_notificador_andamento(
+        if pendentes:
+            notificar = _criar_notificador_andamento(
                 process_id,
                 progresso,
                 etapa_atual="ia_qual",
@@ -464,15 +424,25 @@ async def ingerir_documentos(
                 status="rodando",
                 etapa_atual="ia_qual",
             )
-            for nome, conteudo in novos_qual:
+            periodos_db = sorted(
+                await _to_thread(repo.buscar_periodos_demonstracoes, cnpj_norm)
+            )
+            consolidado_quant = criar_json_base(cnpj_norm)
+            # (nome, hash, titulo) dos arquivos que renderam dados quantitativos
+            arquivos_quant: list[tuple[str, str, str]] = []
+
+            for nome, conteudo in pendentes:
                 md5_arquivo = _md5(conteudo)
+                precisa_qual = force or md5_arquivo not in hashes_qual
+                precisa_quant = force or md5_arquivo not in hashes_quant
                 try:
+                    # 1) Conversao unica: PDF -> Jina OCR; nao-PDF -> Docling.
                     markdown, modo = await _to_thread(
                         extrair_markdown_documento,
                         cnpj_norm,
                         nome,
                         conteudo,
-                        status_callback=notificar_qual,
+                        status_callback=notificar,
                     )
                     if modo == "placeholder":
                         titulo = Path(nome).stem or nome
@@ -483,39 +453,49 @@ async def ingerir_documentos(
                             nome,
                             markdown,
                         )
-                    await _to_thread(
-                        repo.salvar_compendio_qualitativo,
-                        cnpj_norm,
-                        nome,
-                        md5_arquivo,
-                        markdown,
-                        force,
-                        titulo,
-                    )
-                    await _to_thread(
-                        repo.definir_titulo_quantitativo,
-                        cnpj_norm,
-                        md5_arquivo,
-                        titulo,
-                    )
-                    progresso["qual_processados"] += 1
-                    if modo == "texto_bruto":
-                        progresso["qual_fallback"] += 1
-                        _append_erro(
-                            progresso,
-                            f"Markdown via texto bruto (Jina OCR nao retornou markdown) para {nome}.",
+
+                    # 2) Trilha qualitativa: guarda o Markdown convertido.
+                    if precisa_qual:
+                        await _to_thread(
+                            repo.salvar_compendio_qualitativo,
+                            cnpj_norm,
+                            nome,
+                            md5_arquivo,
+                            markdown,
+                            force,
+                            titulo,
                         )
-                    elif modo == "placeholder":
-                        progresso["qual_sem_conteudo"] += 1
-                        _append_erro(
-                            progresso,
-                            f"Documento sem conteudo extraivel; salvo placeholder para {nome}.",
+                        progresso["qual_processados"] += 1
+                        if modo == "texto_bruto":
+                            progresso["qual_fallback"] += 1
+                            _append_erro(
+                                progresso,
+                                f"Markdown via texto bruto (Jina OCR nao retornou markdown) para {nome}.",
+                            )
+                        elif modo == "placeholder":
+                            progresso["qual_sem_conteudo"] += 1
+                            _append_erro(
+                                progresso,
+                                f"Documento sem conteudo extraivel; salvo placeholder para {nome}.",
+                            )
+
+                    # 3) Trilha quantitativa: a partir do MESMO Markdown (gate por conteudo).
+                    if precisa_quant and modo != "placeholder":
+                        resultado_q = await _to_thread(
+                            extrair_quant_de_markdown,
+                            cnpj_norm,
+                            nome,
+                            markdown,
+                            periodos_db,
+                            notificar,
                         )
+                        if resultado_q and resultado_q.get("periodos"):
+                            merge_periods(consolidado_quant, resultado_q)
+                            arquivos_quant.append((nome, md5_arquivo, titulo))
                 except Exception as exc:
-                    progresso["pulados_qual"] += 1
                     _append_erro(
                         progresso,
-                        f"Falha no qualitativo para o arquivo {nome}: {exc}",
+                        f"Falha no processamento do arquivo {nome}: {exc}",
                     )
                 await _atualizar_processo(
                     process_id,
@@ -523,9 +503,37 @@ async def ingerir_documentos(
                     status="rodando",
                     etapa_atual="ia_qual",
                 )
-            _append_passo(progresso, "ia_qual")
-        else:
-            _append_passo(progresso, "ia_qual")
+
+            # 4) Persiste o quantitativo consolidado de uma vez (mantem dedup por periodo).
+            if consolidado_quant["periodos"]:
+                try:
+                    linhas = await _to_thread(
+                        repo.periodos_para_linhas, cnpj_norm, consolidado_quant
+                    )
+                    await _to_thread(repo.salvar_demonstracoes, linhas)
+                    for nome_q, hash_q, titulo_q in arquivos_quant:
+                        await _to_thread(
+                            repo.salvar_compendio_quantitativo,
+                            cnpj_norm,
+                            nome_q,
+                            hash_q,
+                            force,
+                        )
+                        await _to_thread(
+                            repo.definir_titulo_quantitativo,
+                            cnpj_norm,
+                            hash_q,
+                            titulo_q,
+                        )
+                    progresso["quant_processados"] = len(arquivos_quant)
+                except Exception as exc:
+                    _append_erro(
+                        progresso,
+                        f"Falha ao persistir o quantitativo de {cnpj_norm}: {exc}",
+                    )
+
+        _append_passo(progresso, "ia_quant")
+        _append_passo(progresso, "ia_qual")
 
         status_final = "concluido_com_erros" if progresso["erros"] else "concluido"
         _append_passo(progresso, "finalizado")
@@ -576,7 +584,7 @@ async def _executar_cli(args: argparse.Namespace) -> dict[str, Any]:
             raise SystemExit(f"Pasta nao encontrada: {pasta_pdfs}")
         arquivos = carregar_arquivos_em_memoria(pasta_pdfs)
         if not arquivos:
-            raise SystemExit(f"Nenhum PDF encontrado em: {pasta_pdfs}")
+            raise SystemExit(f"Nenhum documento suportado encontrado em: {pasta_pdfs}")
         return await ingerir_documentos(
             args.cnpj,
             arquivos,

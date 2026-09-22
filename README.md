@@ -35,7 +35,9 @@ A conversão de documentos para Markdown (fonte de verdade para a análise de cr
 | **PDF** (digital ou escaneado) | **Jina OCR** (`jina-ocr-v1`) | Cada página é rasterizada localmente (pypdfium2) e OCR-izada na nuvem. Tabelas em HTML. Sempre OCR-iza (dispensa detecção de "escaneado"). |
 | **Não-PDF** (DOCX, XLSX, PPTX, HTML, CSV, MSG...) | **Docling** | Roda 100% local, sem modelos pesados de PDF. |
 
-Código: `scripts_v2/servico_ia_qualitativa.py` (dispatcher `extrair_markdown_documento`) → `servico_ocr_jina.py` (PDF) / `servico_docling.py` (não-PDF). A trilha **quantitativa** (extração de números para `demonstracoes_financeiras`) continua usando Gemini — é um subsistema separado.
+Código: `scripts_v2/servico_ia_qualitativa.py` (dispatcher `extrair_markdown_documento`) → `servico_ocr_jina.py` (PDF) / `servico_docling.py` (não-PDF).
+
+**Markdown como fonte única das duas trilhas:** cada documento é convertido **uma vez** e o mesmo Markdown alimenta a trilha **qualitativa** (guarda o texto) e a **quantitativa** (o Gemini estrutura o Markdown → JSON CVM em `demonstracoes_financeiras`). A quant **não lê mais o PDF diretamente** (sem `pdfplumber`/Vision) e o gate deixou de ser por nome de arquivo — passou a ser por **conteúdo** do Markdown (`markdown_tem_sinais_financeiros`), com o Gemini como árbitro final (retorna vazio quando não há dados).
 
 ---
 
