@@ -20,7 +20,7 @@ try:
     from scripts_v2 import servico_repositorio as repo
     from scripts_v2.servico_cvm import buscar_dados_cvm
     from scripts_v2.servico_ia_qualitativa import (
-        extrair_markdown_pdf,
+        extrair_markdown_documento,
         gerar_titulo_documento,
     )
     from scripts_v2.servico_ia_quantitativa import (
@@ -32,7 +32,7 @@ try:
 except ImportError:
     import servico_repositorio as repo
     from servico_cvm import buscar_dados_cvm
-    from servico_ia_qualitativa import extrair_markdown_pdf, gerar_titulo_documento
+    from servico_ia_qualitativa import extrair_markdown_documento, gerar_titulo_documento
     from servico_ia_quantitativa import (
         carregar_arquivos_em_memoria,
         extrair_dados_quantitativos,
@@ -468,7 +468,7 @@ async def ingerir_documentos(
                 md5_arquivo = _md5(conteudo)
                 try:
                     markdown, modo = await _to_thread(
-                        extrair_markdown_pdf,
+                        extrair_markdown_documento,
                         cnpj_norm,
                         nome,
                         conteudo,
@@ -503,13 +503,13 @@ async def ingerir_documentos(
                         progresso["qual_fallback"] += 1
                         _append_erro(
                             progresso,
-                            f"Markdown via texto bruto (LLM nao retornou estruturado) para {nome}.",
+                            f"Markdown via texto bruto (Jina OCR nao retornou markdown) para {nome}.",
                         )
                     elif modo == "placeholder":
                         progresso["qual_sem_conteudo"] += 1
                         _append_erro(
                             progresso,
-                            f"PDF sem texto extraivel; salvo placeholder para {nome}.",
+                            f"Documento sem conteudo extraivel; salvo placeholder para {nome}.",
                         )
                 except Exception as exc:
                     progresso["pulados_qual"] += 1

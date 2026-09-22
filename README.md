@@ -10,20 +10,32 @@ O projeto adota uma arquitetura baseada na **Semeadura por Tickers**: o usuário
 
 1. **Dependências em Python:**
 ```bash
-pip install requests playwright supabase python-dotenv pdfplumber google-generativeai
+pip install -r requirements.txt
 playwright install chromium
 ```
 
-2. **Supabase, Gemini e API (Crie o arquivo `.env` ou `.env.local` na raiz):**
+2. **Supabase, Gemini, Jina e API (Crie o arquivo `.env` ou `.env.local` na raiz):**
 ```env
 SUPABASE_URL=https://SUA-URL.supabase.co
 SUPABASE_KEY=sua_service_role_key
 GEMINI_API_KEY=sua_chave_gemini
+JINA_API_KEY=sua_chave_jina        # OCR de PDFs (jina-ocr-v1) na trilha qualitativa
 API_KEY=uma_chave_forte_para_o_header_x_api_key
 # Opcional para o front em dev:
 # CORS_ORIGINS=http://localhost:3000
 ```
 > **Nota:** Use a *service_role key* do Supabase para ter acesso total de gravação, não a *anon key*.
+
+### Conversão de documentos → Markdown (trilha qualitativa V2)
+
+A conversão de documentos para Markdown (fonte de verdade para a análise de crédito) é roteada **por tipo de arquivo**:
+
+| Tipo de arquivo | Motor | Observações |
+|---|---|---|
+| **PDF** (digital ou escaneado) | **Jina OCR** (`jina-ocr-v1`) | Cada página é rasterizada localmente (pypdfium2) e OCR-izada na nuvem. Tabelas em HTML. Sempre OCR-iza (dispensa detecção de "escaneado"). |
+| **Não-PDF** (DOCX, XLSX, PPTX, HTML, CSV, MSG...) | **Docling** | Roda 100% local, sem modelos pesados de PDF. |
+
+Código: `scripts_v2/servico_ia_qualitativa.py` (dispatcher `extrair_markdown_documento`) → `servico_ocr_jina.py` (PDF) / `servico_docling.py` (não-PDF). A trilha **quantitativa** (extração de números para `demonstracoes_financeiras`) continua usando Gemini — é um subsistema separado.
 
 ---
 

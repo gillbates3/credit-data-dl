@@ -2,17 +2,19 @@
 
 > Documento de transição entre conversas. O usuário (**Gabriel**, dono/arquiteto) continua a mesma linha de trabalho numa conversa nova, começando do zero. Eu (Claude) atuo como **Tech Lead / Arquiteto**: discuto, desenho e **entrego planos autocontidos** em `.claude/plans/`; o usuário **delega a implementação a agentes Codex** (em conversas paralelas). Não implemento código direto a menos que pedido. Idioma: **pt-BR**. Plataforma: **Windows** (PowerShell + Bash disponíveis).
 >
-> **Estado macro (2026-06-27):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional**. **Estilo BOCAINA (8a) e fix de contraste do nav (8d) já estão code-complete**. Backlog atual de planos (prontos p/ o Codex): **humanizar rótulos de processo (8e)**, **stepper de etapas estilo metrô (8f)**, **aba "Gerenciar Dados" / CRUD da base (8g)**. **Novo workstream (esta sessão): acelerar a ingestão de PDFs (§8j)** — estudo empírico de modelos concluído (decisão: **migrar de gemini-2.5-flash → gemini-3.1-flash-lite**, com pendências) e **paralelismo de chunks** a desenhar. Decisão estratégica: **MarkItDown** (Office→markdown) **adiado**; **Batch API adiado** (dono não trabalha nisso agora). Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
+> **Estado macro (2026-06-27):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional**. **Estilo BOCAINA (8a) e fix de contraste do nav (8d) já estão code-complete**. Backlog atual de planos (prontos p/ o Codex): **humanizar rótulos de processo (8e)**, **stepper de etapas estilo metrô (8f)**, **aba "Gerenciar Dados" / CRUD da base (8g)**. Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
+>
+> **ATUALIZAÇÃO 2026-09-21 — conversão de documentos migrada para Jina OCR + Docling (§8k).** A trilha **qualitativa** (documento→Markdown) **deixou de usar Gemini** para a conversão. Novo roteamento por tipo de arquivo, **implementado nesta sessão**: **PDF → Jina OCR (`jina-ocr-v1`)** (sempre OCR-iza; tabelas em HTML) e **não-PDF → Docling** (DOCX/XLSX/PPTX/HTML/CSV/MSG; 100% local). Isso resolve conjuntamente o §8h (Office→markdown, antes adiado) e o §8j (ingestão de PDF lenta): o processamento pesado sai do desktop/servidor e vai para a API da Jina. O Gemini permanece **só** para (a) gerar o **título** descritivo do documento e (b) toda a trilha **quantitativa** (números → `demonstracoes_financeiras`), que é subsistema separado e **não foi alterada**.
 
 ---
 
 ## 1. O que é o projeto
 
-`credit-data-dl`: pipeline de extração/consolidação de dados de **debêntures brasileiras** para análise de crédito corporativo. Semeadura por **ticker** (ex.: PETR26): descobre o emissor (CNPJ via ANBIMA), cruza com CVM, baixa dados de mercado e demonstrações, aceita **upload de PDFs processados por IA (Gemini)**, e consolida tudo num **Supabase (Postgres remoto)**.
+`credit-data-dl`: pipeline de extração/consolidação de dados de **debêntures brasileiras** para análise de crédito corporativo. Semeadura por **ticker** (ex.: PETR26): descobre o emissor (CNPJ via ANBIMA), cruza com CVM, baixa dados de mercado e demonstrações, aceita **upload de documentos convertidos para Markdown (PDF via Jina OCR; não-PDF via Docling) + extração quantitativa por IA (Gemini)**, e consolida tudo num **Supabase (Postgres remoto)**.
 
 Em **refactoring V2 ("SaaS & API-Ready")** na pasta `scripts_v2/`. O V1 (`scripts/`) é batch local, só referência.
 
-**Stack:** Python async, Supabase/Postgres, Google Gemini (`gemini-2.5-flash`), pdfplumber/pypdf, Playwright, httpx; API FastAPI + uvicorn; Front Next.js 16 (App Router) + React 19 + Tailwind v4 + TypeScript.
+**Stack:** Python async, Supabase/Postgres, Google Gemini (`gemini-2.5-flash`, só quantitativo + títulos), **Jina OCR (`jina-ocr-v1`) p/ PDF + Docling p/ não-PDF (trilha qualitativa)**, pdfplumber/pypdf/pypdfium2, Playwright, httpx; API FastAPI + uvicorn; Front Next.js 16 (App Router) + React 19 + Tailwind v4 + TypeScript.
 
 ---
 
@@ -134,14 +136,16 @@ Régua horizontal de progresso no rodapé do card esquerdo do monitor; nomes cur
 ### 8g. `aba-gerenciar-dados.md` — nova aba CRUD da base por entidade (PLANEJADO)
 Aba "Gerenciar Dados" (`/gerenciar-dados`) p/ visualizar e editar a base **sem** abrir o Supabase. Por debênture (características/agenda/histórico) e por emissor (DFs/qualitativo/quantitativo), + tabelas mestras de emissores/emissões. Decisões do dono: **CRUD célula a célula**; **hard delete com cascata** (impacto + 1 clique); **editar conteúdo de markdown**; confirmação simples sem auditoria; **reprocessamento sobrescrevendo edições manuais é aceito** (sem proteção sticky). ⚠️ FKs **sem `ON DELETE CASCADE`** → cascata explícita e ordenada no repositório (ordem no plano). Camadas: repo (`atualizar_/criar_/deletar_`) → API `/edicao` (PATCH/POST/DELETE) → front BFF.
 
-### 8h. MarkItDown (Office→markdown) — INVESTIGADO, ADIADO (sem plano de execução ainda)
-Avaliado nesta sessão: **não** substituir o Gemini na trilha qualitativa (Gemini é interpretativo: reestrutura tabelas, pula boilerplate, OCR; MarkItDown-core ≈ nosso fallback de texto bruto). **Decisão do dono:** ampliar para arquivos Office **só depois** da ingestão de PDFs estar 100% debugada/implementada. Viabilidade já confirmada (encaixe limpo via dispatcher por tipo na cabeça da trilha qual; o resto do fluxo é agnóstico a formato). Para docs financeiros tabela-pesados, **Docling/PyMuPDF4LLM** são alternativas melhores que o MarkItDown — avaliar num piloto quando for a hora.
+### 8h. Office→markdown — ✅ RESOLVIDO por Docling (ver §8k)
+Superado pela decisão de 2026-09-21: **não-PDF → Docling** (não MarkItDown). O encaixe previsto (dispatcher por tipo na cabeça da trilha qual) foi implementado em `extrair_markdown_documento`.
 
 ### 8i. Status granular ao vivo — `progresso.mensagem_andamento` ✅ BACKEND JÁ IMPLEMENTADO (working tree, não commitado)
 `servico_ia_qualitativa.py` e `servico_ia_quantitativa.py` agora aceitam um `status_callback` (helper `_emit_status`) que emite mensagens humanas finas durante o processamento (ex.: "Enviando páginas 1 a 8 ao Gemini", "Aguardando resposta do Gemini…", "PDF escaneado detectado…"). O `orquestrador.py` conecta isso via `notificar` e grava em **`progresso.mensagem_andamento`** (texto livre, atualizado a cada sub-passo). Também ganhou retry 429/503/UNAVAILABLE (3 tentativas) em `call_ai_with_text` nas duas trilhas.
 > ⚠️ **Impacto nos planos 8e/8f (escritos ANTES deste campo existir — contemplar na implementação):** há agora um sinal **mais rico e já legível** que o enum `etapa_atual`. O card "ETAPA ATUAL" (8e) pode exibir `progresso.mensagem_andamento` (texto fino) em vez de/junto com o rótulo do enum; o stepper (8f) pode usar essa mensagem como legenda da estação ativa. O enum `etapa_atual` continua válido para a etapa "grossa".
 
-### 8j. Acelerar a ingestão de PDFs — estudo de modelos + paralelismo (EM ANDAMENTO, esta sessão)
+### 8j. Acelerar a ingestão de PDFs — estudo de modelos + paralelismo (SUPERADO por §8k)
+> ⚠️ **Superado em 2026-09-21 (§8k):** a trilha **qualitativa** não usa mais Gemini para PDF — migrou para **Jina OCR**, que roda na infra da Jina (tira o gargalo do desktop). O estudo abaixo (paralelismo de chunks Gemini, RPD, thinking) permanece **relevante só para a trilha quantitativa**, que continua no Gemini.
+
 Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada, alguns de 80-100 págs) é impraticável no fluxo sequencial atual. Plano do estudo: `.claude/plans/comparar-modelos-extracao.md`. Artefatos descartáveis: `tmp/comparar_modelos_extracao.py` (harness instrumentado: roda qual+quant nos 2 modelos, captura `finish_reason`/tokens/latência/custo, flags `--apenas-modelo/--thinking/--reforco/--tag/--dry-run`) e `tmp/probe_latencia.py` (mede TTFT vs geração). Saídas em `tmp/comparacao_modelos/`.
 
 **Diagnóstico de latência (provado):** cada chunk de 8 págs leva ~30-40s, e **~89% é geração de output** (TTFT ~4s; ~150-260 tok/s; cada chunk gera ~6-9K tokens de markdown). Logo: chunk maior **não** acelera (mais output) e **arrisca truncar**; **paralelismo é a alavanca** (chunks são independentes). O harness é **sequencial de propósito** (mede o baseline = produção atual); o paralelismo ainda **não** foi implementado.
@@ -156,6 +160,23 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 **Decisões travadas:** (1) ~~migrar p/ gemini-3.1-flash-lite~~ → **manter gemini-2.5-flash** (dono fez testes extensivos em múltiplos modelos; 2.5 Flash é o melhor custo×benefício×tempo; 3.1 preview tem risco de instabilidade sem ganho real de fidelidade); (2) **manter 8 págs/chunk** (dono); (3) Batch API e chunks maiores **fora de escopo** agora.
 **Pendências abertas:** (a) decidir **mecanismo de concorrência** p/ o paralelismo (**cliente async nativo** vs **ThreadPoolExecutor**) — **adiado**; (b) escrever o **plano do paralelismo** (semáforo global + backoff **com jitter** — 503/overload do 2.5 foi frequente nos testes).
 
+### 8k. Conversão de documentos: PDF → Jina OCR, não-PDF → Docling — ✅ IMPLEMENTADO (2026-09-21)
+**Decisão do dono:** "docling processa todos os documentos exceto PDF; para PDF, sempre Jina OCR". Substitui a trilha Gemini (texto/Vision) da **conversão qualitativa** e resolve §8h + §8j de uma vez, externalizando o processamento pesado de PDF para a API da Jina (o dono já decidiu por APIs de OCR na nuvem — arquivos são públicos/baixo valor informacional, sem preocupação de privacidade).
+
+**Arquitetura (implementada):**
+- `servico_ia_qualitativa.py`: dispatcher `extrair_markdown_documento(cnpj, nome, bytes, status_callback) -> (markdown, modo)` roteia por extensão. Mantém a assinatura antiga do orquestrador (era `extrair_markdown_pdf`, **renomeada**). Mantém frontmatter/hash, títulos (Gemini) e o contrato "nunca vazio".
+- `servico_ocr_jina.py` (**novo**): `ocr_pdf(nome, bytes, status_callback)`. Rasteriza cada página (pypdfium2, 150 DPI) → `jina-ocr-v1` (endpoint `https://api.jina.ai/v1/chat/completions`), tabelas em HTML. Retry p/ 429/5xx. Chave `JINA_API_KEY` (carrega `.env.local`+`.env`).
+- `servico_docling.py` (**novo**): `converter_documento(nome, bytes, status_callback)` via `DocumentConverter().convert(DocumentStream(...))` → `export_to_markdown()`. Singleton lazy. Sem modelos pesados (não recebe PDF).
+- `montar_bloco_markdown` **não** aplica mais a remoção agressiva de linhas de tabela (era da era Gemini, que proibia pipes) — Jina/Docling **produzem** tabelas; só colapsa linhas em branco.
+
+**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
+
+**Escopo mantido:** trilha **quantitativa** (números JSON → `demonstracoes_financeiras`) **continua no Gemini** — não é conversão para Markdown. Geração de **título** continua no Gemini.
+
+**Deps:** `docling`, `pypdfium2` adicionados ao `requirements.txt`. **Pendências:** (a) teste end-to-end real via API com Supabase (não rodado nesta sessão — precisa das chaves/serviço); (b) o loader do CLI `docs` do orquestrador usa `carregar_arquivos_em_memoria` da trilha **quant** (só `*.pdf`) — o caminho real (upload pela API) passa os bytes direto, então não afeta produção, mas o teste local via CLI não pega não-PDF; (c) avaliar paralelismo de páginas no Jina se latência incomodar.
+
+Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engines de OCR na nuvem — DeepSeek-OCR-2, Chandra, jina-ocr-v1, etc.). jina-ocr-v1 ficou como melhor custo×velocidade×fidelidade p/ tabelas.
+
 > Planos legados (já entregues): `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, `api-fastapi.md`, `front-nextjs.md`. Planos já implementados: `markdown-todos-pdfs.md` (8b), `front-estilo-bocaina.md` (8a), `fix-nav-contraste.md` (8d).
 
 ---
@@ -166,7 +187,7 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 1. `validacao_emissor` (emissor precisa existir; senão job=`erro`).
 2. `peek_hashes` (dedup por MD5, por trilha).
 3. `ia_quant` — só arquivos financeiros (heurística de nome): Gemini→JSON CVM → `demonstracoes_financeiras` + manifesto quant.
-4. `ia_qual` — **todos** os arquivos: Gemini→markdown fiel — **PDF digital ⇒ modo Texto por lotes (8 pág.); PDF escaneado ⇒ modo Vision por lotes (15 pág.)**. A rota é decidida por `is_scanned`; Vision **não** é fallback de falha de texto — **isto é POR DESIGN (não reintroduzir):** falha no modo texto costuma ser erro transitório do Gemini (429/503), tratado pelos retries; não faz sentido gastar Vision num PDF que comprovadamente tem texto. **O mesmo vale na trilha quantitativa** (texto que falha não cai mais para Vision). Retries 429/503/UNAVAILABLE (3 tentativas). Sanitização do sufixo do tempfile (`re.match(r"^(\.[a-zA-Z0-9]+)")`) corrige `UnicodeEncodeError` no Windows. Agora **sempre salva** (texto bruto/placeholder se falhar).
+4. `ia_qual` — **todos** os arquivos: documento→markdown fiel via `extrair_markdown_documento` (dispatcher por extensão em `servico_ia_qualitativa.py`) — **PDF ⇒ Jina OCR (`jina-ocr-v1`), página a página rasterizada (pypdfium2, 150 DPI), tabelas em HTML; não-PDF ⇒ Docling** (`servico_docling.py`). Não há mais detecção de "escaneado": todo PDF é OCR-izado (o Jina rasteriza+OCR por padrão, cobrindo digital e escaneado). Fallbacks garantem "nunca vazio": PDF sem retorno do Jina → texto digital bruto (pdfplumber) → placeholder; não-PDF sem retorno do Docling → placeholder. `modo ∈ {"jina","docling","texto_bruto","placeholder"}`. **Histórico (não reintroduzir):** a antiga trilha Gemini (texto por lotes 8 pág. / Vision por lotes 15 pág., roteada por `is_scanned`) foi **removida** desta trilha em 2026-09-21 (§8k).
 5. `finalizado` → `concluido` | `concluido_com_erros`.
 
 Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotência por hash, por trilha. Durante o processamento, cada sub-passo emite status humano via `status_callback` → grava em `progresso.mensagem_andamento` (ver §8i). Leitura posterior: `/emissores/{cnpj}/visao-completa` monta a lista de Markdowns (qual + análises), com selo `financeiro` quando o hash também está no manifesto quant.
@@ -177,7 +198,7 @@ Cada PDF passa pelas **duas trilhas** (financeiro = dados + markdown). Idempotê
 
 - **Planos em `.claude/plans/<nome-descritivo>.md`** (versionados no Git; `.claude/` não está no `.gitignore`). Links relativos. Assumir que o executor (Codex) não tem o histórico.
 - **Memória** em `…/memory/`: `v2-arch-decisions.md`, `convencao-planos.md`, `api-fastapi-decisions.md`, `marca-bocaina.md`. Índice em `MEMORY.md`.
-- **Env:** serviços carregam `.env.local` (GEMINI_API_KEY); repositório carrega `.env.local`+`.env` (SUPABASE_URL, SUPABASE_KEY service_role); API usa `API_KEY` (+ opcional `CORS_ORIGINS`); front `API_BASE_URL`+`API_KEY`. Tudo gitignored.
+- **Env:** serviços carregam `.env.local` (GEMINI_API_KEY); **`servico_ocr_jina` carrega `.env.local`+`.env` e exige `JINA_API_KEY`** (a chave da Jina está no `.env`); repositório carrega `.env.local`+`.env` (SUPABASE_URL, SUPABASE_KEY service_role); API usa `API_KEY` (+ opcional `CORS_ORIGINS`); front `API_BASE_URL`+`API_KEY`. Tudo gitignored.
 - Idioma **pt-BR**. Usuário **delega a Codex**; eu entrego planos. **Não revertam** mudanças que o Codex já fez em paralelo (verificar antes).
 
 ---

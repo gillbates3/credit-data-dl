@@ -8,3 +8,8 @@ google-genai
 fastapi
 uvicorn[standard]
 python-multipart
+# Conversao de documentos -> Markdown (trilha qualitativa):
+#   PDF     -> Jina OCR (jina-ocr-v1) via API; rasterizacao local com pypdfium2
+#   nao-PDF -> Docling (DOCX, XLSX, PPTX, HTML, CSV, MSG...), 100% local
+docling
+pypdfium2
