@@ -4,6 +4,8 @@
 >
 > **Estado macro (2026-06-27):** backend (serviços + orquestrador + repositório + API FastAPI) **pronto e validado**; front Next.js **funcional**. **Estilo BOCAINA (8a) e fix de contraste do nav (8d) já estão code-complete**. Backlog atual de planos (prontos p/ o Codex): **humanizar rótulos de processo (8e)**, **stepper de etapas estilo metrô (8f)**, **aba "Gerenciar Dados" / CRUD da base (8g)**. Passo 6 (análise de crédito por LLM) segue **por último, de propósito**.
 >
+> **ATUALIZAÇÃO 2026-09-22 — §8k validada e2e + mecânica de remoção de dados.** A §8k (abaixo) foi **testada ponta a ponta** via API + Supabase (números do documento corretos; ver §8k). Também há agora um **primitivo de remoção por grupo econômico** — `servico_repositorio.deletar_dados_emissor` / `contar_dados_emissor` + CLI `scripts_v2/utils_remover_emissor.py` (hard delete FK-safe; ver §6 e §8g). Achado à parte no teste: **bug de escala na ingestão CVM** (não relacionado à §8k) — ver §8k.
+
 > **ATUALIZAÇÃO 2026-09-21 — conversão de documentos migrada para Jina OCR + Docling (§8k).** A trilha **qualitativa** (documento→Markdown) **deixou de usar Gemini** para a conversão. Novo roteamento por tipo de arquivo, **implementado nesta sessão**: **PDF → Jina OCR (`jina-ocr-v1`)** (sempre OCR-iza; tabelas em HTML) e **não-PDF → Docling** (DOCX/XLSX/PPTX/HTML/CSV/MSG; 100% local). Isso resolve conjuntamente o §8h (Office→markdown, antes adiado) e o §8j (ingestão de PDF lenta): o processamento pesado sai do desktop/servidor e vai para a API da Jina. O Gemini permanece **só** para (a) gerar o **título** descritivo do documento e (b) toda a trilha **quantitativa** (números → `demonstracoes_financeiras`), que é subsistema separado e **não foi alterada**.
 
 ---
@@ -92,6 +94,8 @@ Funções de **processos/jobs** (renomeadas de job→processo): `criar_processo(
 
 **Escrita:** `salvar_emissor`, `salvar_caracteristicas`, `salvar_agenda`, `salvar_historico`, `periodos_para_linhas`, `salvar_demonstracoes`, `salvar_compendio_qualitativo(cnpj,nome,hash,markdown,force=False)`, `salvar_compendio_quantitativo(cnpj,nome,hash,force=False)`, `salvar_analise_credito`.
 
+**Remoção (grupo econômico) — ✅ 2026-09-22:** `deletar_dados_emissor(cnpj, *, incluir_emissor=True) -> {tabela: n_removidas}` faz **hard delete** em ordem FK-safe (as FKs **não** têm `ON DELETE CASCADE`): `deb_historico_diario` (por `ticker_deb`, pois não tem coluna `cnpj`) → `deb_agenda` → `deb_caracteristicas` → `demonstracoes_financeiras` → `emissor_compendio_qualitativo`/`_quantitativo` → `emissor_analise_credito` → (opcional) `emissores`. `incluir_emissor=False` mantém o cadastro e apaga só os dados (útil p/ reprocessar sem re-rodar CVM). `contar_dados_emissor(cnpj) -> {tabela: n}` inspeciona antes/depois. CLI: `scripts_v2/utils_remover_emissor.py <CNPJ> [--confirmar] [--manter-emissor]` (dry-run por padrão). É o **primitivo de exclusão** que a §8g vai reusar.
+
 **Performance (já aplicada):** `listar_detalhes_ativos` reescrita p/ batching com `.in_(...)` (4 queries fixas, não 1+3N); `montar_visao_completa_emissor` paraleliza leituras independentes com `ThreadPoolExecutor` (supabase-py httpx é thread-safe) e reaproveita linhas; `IN_FILTER_SIZE`/`_chunks` helpers. Conexão: `_get_client()` lazy singleton; carrega `.env.local` e `.env`; exige `SUPABASE_URL` + `SUPABASE_KEY` (service_role).
 
 ---
@@ -137,7 +141,9 @@ Apresentação no front: `formatRotulo` (sentence-case + acrônimos cvm→CVM) p
 ### 8f. `stepper-etapas-processo.md` — stepper visual de etapas estilo metrô (PLANEJADO)
 Régua horizontal de progresso no rodapé do card esquerdo do monitor; nomes curtos de estação; estados concluida/pulada/atual/falhou/pendente derivados de `passos_concluidos`+`etapa_atual`+`status` (sem backend). Trata CVM pulada (empresa Fechada) e erro. `computarEtapas()` em `lib/process-monitor.ts` + componente `process-stepper.tsx`.
 
-### 8g. `aba-gerenciar-dados.md` — nova aba CRUD da base por entidade (PLANEJADO)
+### 8g. `aba-gerenciar-dados.md` — nova aba CRUD da base por entidade (PLANEJADO; primitivo de delete já pronto)
+> ✅ **2026-09-22 — parte da exclusão já existe:** `servico_repositorio.deletar_dados_emissor` (hard delete FK-safe por grupo econômico) + `contar_dados_emissor` + CLI `scripts_v2/utils_remover_emissor.py` (ver §6). A cascata explícita e ordenada que o plano previa **já está implementada e validada** no repositório. Falta o resto da §8g (API `/edicao`, front, CRUD célula a célula, delete por debênture/linha).
+
 Aba "Gerenciar Dados" (`/gerenciar-dados`) p/ visualizar e editar a base **sem** abrir o Supabase. Por debênture (características/agenda/histórico) e por emissor (DFs/qualitativo/quantitativo), + tabelas mestras de emissores/emissões. Decisões do dono: **CRUD célula a célula**; **hard delete com cascata** (impacto + 1 clique); **editar conteúdo de markdown**; confirmação simples sem auditoria; **reprocessamento sobrescrevendo edições manuais é aceito** (sem proteção sticky). ⚠️ FKs **sem `ON DELETE CASCADE`** → cascata explícita e ordenada no repositório (ordem no plano). Camadas: repo (`atualizar_/criar_/deletar_`) → API `/edicao` (PATCH/POST/DELETE) → front BFF.
 
 ### 8h. Office→markdown — ✅ RESOLVIDO por Docling (ver §8k)
@@ -185,7 +191,13 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 
 **Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks quali:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
 
-**Deps:** `docling`, `pypdfium2` no `requirements.txt`. **Pendências:** (a) teste end-to-end real via API+Supabase (não rodado — precisa das chaves/serviço); (b) avaliar paralelismo de páginas no Jina se latência incomodar; (c) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
+**Deps:** `docling`, `pypdfium2` no `requirements.txt`.
+
+**✅ Teste end-to-end real (2026-09-22, API + Supabase de teste):** cadastro `ALAR14` (CNPJ 23438929000100, Alares) + `POST /cadastro/documentos` com `alares_1.pdf` (deck "Apresentação de Resultados 2T26", 11p). Fluxo §8k rodou ao vivo (Jina OCR pág 1→11 → quant do mesmo Markdown → grava). **Números do documento corretos:** as linhas geradas **pelo documento** (isoladas via remoção — ver abaixo) foram **19**, KPIs reais do deck com escala certa (ex.: Receita Líquida 2026-06-30 = 252.000.000 = "R$252M" do deck; EBITDA/CAPEX ok), **sem balanço fabricado**. Título auto ("Release de Resultados 2T26") e selo `financeiro` funcionando.
+
+> ⚠️ **Achado separado (NÃO é da §8k): bug de escala na trilha CVM.** No mesmo teste, a etapa CVM do cadastro do ticker gravou ~1244 linhas oficiais (10 períodos ITR/DFP) com **escala absurda** (ex.: Ativo Total = 2,3×10¹⁶). Origem em `servico_cvm`/`periodos_para_linhas` (ingestão CVM), **não** no documento nem no Jina/Docling. **A investigar.**
+
+**Pendências:** (a) decidir se *deck/release* **deve** popular `demonstracoes_financeiras` (as 19 linhas de KPI) ou só a trilha qualitativa — ver discussão do gate por conteúdo; (b) **corrigir o bug de escala da CVM** (acima); (c) avaliar paralelismo de páginas no Jina se latência incomodar; (d) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
 
 Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engines de OCR na nuvem — DeepSeek-OCR-2, Chandra, jina-ocr-v1, etc.). jina-ocr-v1 ficou como melhor custo×velocidade×fidelidade p/ tabelas.
 
@@ -250,9 +262,9 @@ Ordem cronológica do que foi feito/decidido nesta sessão (2026-06-23 a 06-25):
 4. HANDOVER atualizado (§8j + macro state + este histórico).
 
 ### Primeira ação sugerida na próxima conversa
-> ⚠️ **Atualizado 2026-09-21:** os itens 1 e 5 abaixo (ingestão §8j / piloto MarkItDown-Docling §8h) foram **resolvidos** pela §8k (Jina OCR p/ PDF + Docling p/ não-PDF, com a quant consumindo o mesmo Markdown; commitado e mergeado em `main`). Próximas ações válidas:
-1. **Teste end-to-end da §8k via API + Supabase**: subir `uvicorn api.main:app`, `POST /cadastro/ticker` e `POST /cadastro/documentos` com 1 DF (PDF) + 1 DOCX; conferir gravação em `demonstracoes_financeiras` + compêndios quali/quant + títulos. (Único pendente real da §8k.)
-2. Entregar ao Codex os planos prontos: **8e**, **8f**, **8g**.
+> ⚠️ **Atualizado 2026-09-22:** §8k (Jina/Docling + quant do mesmo Markdown) **implementada, mergeada e validada e2e**; mecânica de **remoção por grupo econômico** pronta (§6/§8g). Próximas ações válidas:
+1. **Corrigir o bug de escala da CVM** (Ativo Total = 2,3×10¹⁶) — trilha `servico_cvm`/`periodos_para_linhas` (§8k, achado separado). Decidir também se deck/release popula `demonstracoes_financeiras` ou só a quali.
+2. Entregar ao Codex os planos prontos: **8e**, **8f**, **8g** (delete já tem primitivo pronto — reusar `deletar_dados_emissor`).
 3. Fechar o **QA visual** do estilo BOCAINA (8a/8d) rodando o app.
 4. `titulos-descritivos-documentos.md` (8c) pendente (lembrar do ALTER TABLE) — obs.: a geração de título já roda no fluxo §8k.
 5. Por último, de propósito: **Passo 6** (`servico_analise_credito.py`). *(Paralelismo §8j agora só se aplica à estruturação quantitativa via Gemini, se virar gargalo.)*

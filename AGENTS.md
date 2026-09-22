@@ -34,3 +34,12 @@ Cada documento é convertido **uma vez** e o Markdown alimenta **as duas trilhas
 - Orquestrador CLI: `python scripts_v2/orquestrador.py ticker PETR26` | `... docs <CNPJ> <pasta>`.
 - Front: em `frontend/`, `npm run dev`; typecheck `./node_modules/.bin/tsc --noEmit`.
 - Sempre validar sintaxe/import após editar Python: `python -m py_compile <arquivo>`.
+
+## Remoção de dados por grupo econômico (CNPJ)
+Mecânica de **hard delete** FK-safe (base do §8g). Em `servico_repositorio`: `deletar_dados_emissor(cnpj, incluir_emissor=True)` e `contar_dados_emissor(cnpj)`. CLI:
+```bash
+python scripts_v2/utils_remover_emissor.py <CNPJ>                    # dry-run (só conta)
+python scripts_v2/utils_remover_emissor.py <CNPJ> --confirmar        # apaga tudo, inclusive o emissor
+python scripts_v2/utils_remover_emissor.py <CNPJ> --confirmar --manter-emissor  # apaga só os dados
+```
+⚠️ É **destrutivo e no banco real**. Só rodar com autorização explícita do dono.
