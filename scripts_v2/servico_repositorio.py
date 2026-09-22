@@ -696,6 +696,120 @@ def salvar_analise_credito(
     _get_client().table("emissor_analise_credito").insert(registro).execute()
 
 
+def contar_dados_emissor(cnpj: str) -> dict[str, int]:
+    """Conta as linhas de cada tabela associadas a um emissor (grupo economico).
+
+    Util para inspecionar/confirmar antes e depois de uma remocao.
+    """
+    cnpj_norm = normaliza_cnpj(cnpj)
+    if not cnpj_norm:
+        raise ValueError("cnpj e obrigatorio")
+    client = _get_client()
+
+    tickers = [
+        row["ticker_deb"]
+        for row in (
+            client.table("deb_caracteristicas")
+            .select("ticker_deb")
+            .eq("cnpj", cnpj_norm)
+            .execute()
+            .data
+            or []
+        )
+        if row.get("ticker_deb")
+    ]
+
+    def _contar(tabela: str, coluna: str, valores) -> int:
+        query = client.table(tabela).select("*", count="exact")
+        if coluna == "ticker_deb":
+            if not valores:
+                return 0
+            query = query.in_("ticker_deb", valores)
+        else:
+            query = query.eq("cnpj", valores)
+        return query.execute().count or 0
+
+    return {
+        "emissores": _contar("emissores", "cnpj", cnpj_norm),
+        "demonstracoes_financeiras": _contar("demonstracoes_financeiras", "cnpj", cnpj_norm),
+        "deb_caracteristicas": _contar("deb_caracteristicas", "cnpj", cnpj_norm),
+        "deb_agenda": _contar("deb_agenda", "cnpj", cnpj_norm),
+        "deb_historico_diario": _contar("deb_historico_diario", "ticker_deb", tickers),
+        "emissor_compendio_qualitativo": _contar("emissor_compendio_qualitativo", "cnpj", cnpj_norm),
+        "emissor_compendio_quantitativo": _contar("emissor_compendio_quantitativo", "cnpj", cnpj_norm),
+        "emissor_analise_credito": _contar("emissor_analise_credito", "cnpj", cnpj_norm),
+    }
+
+
+def deletar_dados_emissor(cnpj: str, *, incluir_emissor: bool = True) -> dict[str, int]:
+    """Remove (hard delete) todos os dados de um grupo economico (por CNPJ).
+
+    As FKs do schema NAO tem ON DELETE CASCADE, entao a remocao e feita na ordem
+    filhos -> pai. `deb_historico_diario` nao tem coluna `cnpj` (so `ticker_deb`),
+    entao e removida pelos tickers das debentures do emissor.
+
+    Args:
+        cnpj: CNPJ do emissor (grupo economico).
+        incluir_emissor: se True, remove tambem a linha em `emissores` (o emissor
+            deixa de existir). Se False, mantem o cadastro do emissor e apaga so os
+            dados (util para reprocessar documentos sem re-rodar o cadastro/CVM).
+
+    Returns:
+        dict {tabela: linhas_removidas}.
+    """
+    cnpj_norm = normaliza_cnpj(cnpj)
+    if not cnpj_norm:
+        raise ValueError("cnpj e obrigatorio")
+    client = _get_client()
+
+    tickers = [
+        row["ticker_deb"]
+        for row in (
+            client.table("deb_caracteristicas")
+            .select("ticker_deb")
+            .eq("cnpj", cnpj_norm)
+            .execute()
+            .data
+            or []
+        )
+        if row.get("ticker_deb")
+    ]
+
+    removidos: dict[str, int] = {}
+
+    def _deletar_por_cnpj(tabela: str) -> None:
+        resp = client.table(tabela).delete(count="exact").eq("cnpj", cnpj_norm).execute()
+        removidos[tabela] = resp.count or 0
+
+    # 1) filhos de deb_caracteristicas (historico nao tem cnpj -> por ticker)
+    if tickers:
+        resp = (
+            client.table("deb_historico_diario")
+            .delete(count="exact")
+            .in_("ticker_deb", tickers)
+            .execute()
+        )
+        removidos["deb_historico_diario"] = resp.count or 0
+    else:
+        removidos["deb_historico_diario"] = 0
+
+    # 2) demais filhos de emissores (todos tem coluna cnpj)
+    _deletar_por_cnpj("deb_agenda")
+    _deletar_por_cnpj("deb_caracteristicas")
+    _deletar_por_cnpj("demonstracoes_financeiras")
+    _deletar_por_cnpj("emissor_compendio_qualitativo")
+    _deletar_por_cnpj("emissor_compendio_quantitativo")
+    _deletar_por_cnpj("emissor_analise_credito")
+
+    # 3) por fim, o emissor (pai) se solicitado
+    if incluir_emissor:
+        _deletar_por_cnpj("emissores")
+    else:
+        removidos["emissores"] = 0
+
+    return removidos
+
+
 def criar_processo(tipo: str, alvo: str) -> str:
     tipo_norm = (tipo or "").strip().lower()
     if tipo_norm not in {"cadastro", "analise"}:
