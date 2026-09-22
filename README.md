@@ -41,7 +41,9 @@ Código: `scripts_v2/servico_ia_qualitativa.py` (dispatcher `extrair_markdown_do
 
 ---
 
-## 📂 Estrutura de Pastas
+> ⚠️ **V1 (legado) × V2 (atual).** As seções **"Estrutura de Pastas"** e **"Como Executar o Pipeline"** abaixo descrevem o **pipeline V1** (batch local em `scripts/`, camada Silver em `data/`), mantido apenas como **referência**. O sistema atual é o **V2**: serviços em `scripts_v2/` → `orquestrador.py` → **API FastAPI** (`api/`) → **front Next.js** (`frontend/`), com persistência direta no Supabase (sem camada Silver em disco). Arquitetura V2 canônica: `.claude/plans/HANDOVER.md`.
+
+## 📂 Estrutura de Pastas (V1 — legado)
 
 ```text
 credit-data-dl/
@@ -73,7 +75,7 @@ credit-data-dl/
 
 ---
 
-## 🚀 Como Executar o Pipeline
+## 🚀 Como Executar o Pipeline (V1 — legado)
 
 1. **Coleta de Mercado**
 ```bash

@@ -1,5 +1,7 @@
 # Plano: Markdown para TODOS os PDFs ingeridos (sem exceção)
 
+> ⚠️ **SUPERSEDED (2026-09-21) — registro histórico.** O contrato "nunca vazio" segue valendo, mas o código mudou (ver HANDOVER §8k): `extrair_markdown_pdf` foi renomeada para `extrair_markdown_documento`; o motor deixou de ser Gemini (agora **PDF→Jina OCR, não-PDF→Docling**); `modo ∈ {"jina","docling","texto_bruto","placeholder"}`. Este documento é mantido como história, não como estado atual.
+
 > **Entrega:** spec autocontido para um agente executor (Codex). Assuma que ele **não** tem o histórico desta conversa. Idioma do projeto: **pt-BR**. Plataforma: **Windows**.
 
 ## Context

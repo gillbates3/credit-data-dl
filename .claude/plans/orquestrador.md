@@ -1,5 +1,7 @@
 # Plano: implementar `scripts_v2/orquestrador.py` (maestro do pipeline V2)
 
+> ⚠️ **PARCIALMENTE SUPERSEDED (2026-09-21) — registro histórico.** A estrutura geral (ticker/documentos, jobs, peek-before-leap) segue válida, mas o processamento de documentos mudou (ver HANDOVER §8k/§9): `ingerir_documentos` virou **loop único por arquivo** (converte 1× → alimenta quali+quant do mesmo Markdown); `extrair_dados_quantitativos` (batch) e o auto-filtro por nome `is_financial_pdf_name` foram **removidos** (gate quant agora é por **conteúdo**). Mantido como história, não como estado atual.
+
 > Plano autocontido para delegar a um agente executor (Codex) que **não** participou da discussão. Todos os contratos estão abaixo. Leia os arquivos referenciados antes de codar.
 
 ## Context

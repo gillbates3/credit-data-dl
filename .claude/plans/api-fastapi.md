@@ -1,5 +1,7 @@
 # Plano: API FastAPI (V2) — camada fina sobre o orquestrador
 
+> ⚠️ **SUPERSEDED nos nomes de rota (registro histórico).** Os endpoints foram **renomeados** na implementação: `/ingest/*`→`/cadastro/*`, `/jobs`→`/processos`, `/proximos-pagamentos`→`/agenda-eventos`, e `rotas_ingestao.py`→`rotas_cadastro.py`; as leituras foram muito expandidas (`/ativos*`, `/emissores/*/visao-completa`, etc.). **Lista canônica atual:** HANDOVER §5 e `api/rotas_cadastro.py` / `api/rotas_leitura.py`. Mantido como história.
+
 > Prompt autocontido para um agente executor (Codex). **Assuma que você não tem o histórico da conversa que gerou este plano.** Idioma do projeto: **português (pt-BR)**. Plataforma: Windows (PowerShell + Bash disponíveis). Não altere a lógica de negócio dos serviços nem do orquestrador; a API é **fina**.
 
 ---

@@ -211,7 +211,8 @@ Cada documento é convertido **uma vez** e alimenta as **duas trilhas** (finance
 
 ## 10. Convenções do projeto
 
-- **Planos em `.claude/plans/<nome-descritivo>.md`** (versionados no Git; `.claude/` não está no `.gitignore`). Links relativos. Assumir que o executor (Codex) não tem o histórico.
+- **`AGENTS.md`** (raiz): guia curto de entrada para agentes/Codex, aponta p/ este HANDOVER e resume convenções + a regra §8k (não reintroduzir Gemini na conversão de PDF).
+- **Planos em `.claude/plans/<nome-descritivo>.md`** (versionados no Git; `.claude/` não está no `.gitignore`). Links relativos. Assumir que o executor (Codex) não tem o histórico. Planos superados trazem banner `⚠️ SUPERSEDED` no topo (vale o HANDOVER + código).
 - **Memória** em `…/memory/`: `v2-arch-decisions.md`, `convencao-planos.md`, `api-fastapi-decisions.md`, `marca-bocaina.md`. Índice em `MEMORY.md`.
 - **Env:** serviços carregam `.env.local` (GEMINI_API_KEY); **`servico_ocr_jina` carrega `.env.local`+`.env` e exige `JINA_API_KEY`** (a chave da Jina está no `.env`); repositório carrega `.env.local`+`.env` (SUPABASE_URL, SUPABASE_KEY service_role); API usa `API_KEY` (+ opcional `CORS_ORIGINS`); front `API_BASE_URL`+`API_KEY`. Tudo gitignored.
 - Idioma **pt-BR**. Usuário **delega a Codex**; eu entrego planos. **Não revertam** mudanças que o Codex já fez em paralelo (verificar antes).
