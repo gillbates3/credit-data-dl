@@ -197,7 +197,7 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 
 > ⚠️ **Achado separado (NÃO é da §8k): bug de escala na trilha CVM.** No mesmo teste, a etapa CVM do cadastro do ticker gravou ~1244 linhas oficiais (10 períodos ITR/DFP) com **escala absurda** (ex.: Ativo Total = 2,3×10¹⁶). Origem em `servico_cvm`/`periodos_para_linhas` (ingestão CVM), **não** no documento nem no Jina/Docling. **A investigar.**
 
-**Pendências:** (a) decidir se *deck/release* **deve** popular `demonstracoes_financeiras` (as 19 linhas de KPI) ou só a trilha qualitativa — ver discussão do gate por conteúdo; (b) **corrigir o bug de escala da CVM** (acima); (c) avaliar paralelismo de páginas no Jina se latência incomodar; (d) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
+**Pendências:** (a) decidir se *deck/release* **deve** popular `demonstracoes_financeiras` (as 19 linhas de KPI) ou só a trilha qualitativa — ver discussão do gate por conteúdo; (b) **corrigir o bug de escala da CVM** → **plano pronto p/ executar: `.claude/plans/escala-moeda-hibrida.md`** (modelo híbrido: `valor` canônico em reais cheios + `valor_origem`/`escala_origem`; corrige `parse_valor` e passa a respeitar `ESCALA_MOEDA`; mesma regra na trilha do documento); (c) avaliar paralelismo de páginas no Jina se latência incomodar; (d) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
 
 Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engines de OCR na nuvem — DeepSeek-OCR-2, Chandra, jina-ocr-v1, etc.). jina-ocr-v1 ficou como melhor custo×velocidade×fidelidade p/ tabelas.
 
@@ -263,7 +263,7 @@ Ordem cronológica do que foi feito/decidido nesta sessão (2026-06-23 a 06-25):
 
 ### Primeira ação sugerida na próxima conversa
 > ⚠️ **Atualizado 2026-09-22:** §8k (Jina/Docling + quant do mesmo Markdown) **implementada, mergeada e validada e2e**; mecânica de **remoção por grupo econômico** pronta (§6/§8g). Próximas ações válidas:
-1. **Corrigir o bug de escala da CVM** (Ativo Total = 2,3×10¹⁶) — trilha `servico_cvm`/`periodos_para_linhas` (§8k, achado separado). Decidir também se deck/release popula `demonstracoes_financeiras` ou só a quali.
+1. **Executar `.claude/plans/escala-moeda-hibrida.md`** — corrige o bug de escala da CVM (Ativo Total = 2,3×10¹⁶) e implementa o modelo híbrido de escala de moeda (`valor` reais cheios + `valor_origem`/`escala_origem`) nas duas trilhas. Decidir em paralelo se deck/release popula `demonstracoes_financeiras` ou só a quali.
 2. Entregar ao Codex os planos prontos: **8e**, **8f**, **8g** (delete já tem primitivo pronto — reusar `deletar_dados_emissor`).
 3. Fechar o **QA visual** do estilo BOCAINA (8a/8d) rodando o app.
 4. `titulos-descritivos-documentos.md` (8c) pendente (lembrar do ALTER TABLE) — obs.: a geração de título já roda no fluxo §8k.
