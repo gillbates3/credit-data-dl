@@ -47,7 +47,7 @@ Código: `scripts_v2/servico_ia_qualitativa.py` (dispatcher `extrair_markdown_do
 credit-data-dl/
 ├── emissoes.csv                          ← [INPUT] Debêntures monitoradas (Semente)
 ├── empresas.csv                          ← [GERADO] Cadastro de empresas e cruzamento CVM
-├── .env                                  ← Chaves API (Supabase, Gemini)
+├── .env                                  ← Chaves API (Supabase, Gemini, Jina, API_KEY)
 ├── README.md                             ← Documentação
 ├── data/
 │   ├── 01_landing/                       ← Dados Brutos (Raw)
@@ -121,15 +121,17 @@ uvicorn api.main:app --reload --port 8000
 
 Autenticacao: todos os endpoints, exceto `GET /health`, exigem o header `X-API-Key`.
 
-Endpoints principais:
+Endpoints principais (nomes reais em `api/rotas_cadastro.py` e `api/rotas_leitura.py`):
 
-- `POST /ingest/ticker`
-- `POST /ingest/documentos`
-- `GET /jobs`
-- `GET /jobs/{job_id}`
-- `GET /portfolio`
-- `GET /proximos-pagamentos`
-- `GET /emissores/{cnpj}`
+Escrita (retornam `202` + `{process_id}`):
+- `POST /cadastro/ticker` — JSON `{ticker, deep?, data_corte_deep?}`.
+- `POST /cadastro/documentos` — multipart `cnpj` + `arquivos`.
+
+Leitura:
+- `GET /processos` · `GET /processos/{process_id}`
+- `GET /portfolio` · `GET /agenda-eventos`
+- `GET /ativos` · `GET /ativos/opcoes` · `GET /ativos/{ticker_deb}/historico`
+- `GET /emissores/resolver/{identificador}` · `GET /emissores/{cnpj}` · `GET /emissores/{cnpj}/visao-completa`
 
 Limitacao conhecida:
 

@@ -119,9 +119,13 @@ App Router + TS + Tailwind v4 + React 19. **BFF**: `frontend/lib/api.ts` (`impor
 Tema **claro + cromo verde**; **só Gotham** (sem serifada New York); **só logo+pássaro** (sem padronagens/22,5°). Tokens já no `globals.css`; falta varrer componentes (sombras, raios, glass removido, `text-white`→cream, `text-rose`→`--danger`), nav e assets de logo. Inspiração: site oficial https://bocainacapital.com/. Decisões salvas na memória `marca-bocaina.md`.
 
 ### 8b. `markdown-todos-pdfs.md` — todo PDF vira markdown salvo e visível ✅ IMPLEMENTADO E VERIFICADO (nesta conversa)
+> ⚠️ **Código superseded pela §8k (2026-09-21):** `extrair_markdown_pdf` foi **renomeada** para `extrair_markdown_documento` e o motor deixou de ser LLM/Gemini (agora PDF→Jina OCR, não-PDF→Docling; `modo ∈ {"jina","docling","texto_bruto","placeholder"}`). O contrato "nunca vazio" e os contadores `qual_fallback`/`qual_sem_conteudo` permanecem.
+
 A trilha qualitativa já transcreve qualquer PDF em markdown; o bug era **descartar** quando o LLM retornava vazio. Implementado: `extrair_markdown_pdf()` (LLM +1 retry → texto bruto → placeholder; nunca vazio); orquestrador **sempre salva** (contadores `qual_fallback`/`qual_sem_conteudo`, sem descarte); repositório marca `financeiro` no item de markdown cruzando hashes do manifesto quant; front mostra selo "financeiro". **Verificado:** AST parse + `tsc` OK; falta só o teste end-to-end com PDFs reais. Recuperar antigos = reenviar (forward-only; bytes originais não são guardados).
 
-### 8c. `titulos-descritivos-documentos.md` — título descritivo por documento (PLANEJADO, não implementado)
+### 8c. `titulos-descritivos-documentos.md` — título descritivo por documento (PARCIAL)
+> ⚠️ **Atualização §8k:** `gerar_titulo_documento()` e `definir_titulo_quantitativo()` **já existem e rodam** no fluxo unificado de `ingerir_documentos` (título gerado 1× sobre o Markdown e gravado nas duas trilhas). Resta o lado **schema/front** deste plano (ALTER TABLE `titulo`, `montar_visao_completa_emissor`, `QuantitativeManifest.titulo`).
+
 `nome_arquivo` (UUID) vira só referência interna; gerar título via LLM sobre o markdown ("ITR Mar2026", "Escritura 2ª Emissão VPLT"…). **Forward-only**; título gravado **nas duas tabelas** (qual+quant). Requer **ALTER TABLE … ADD COLUMN titulo text** (qual+quant), nova `gerar_titulo_documento()`, `definir_titulo_quantitativo()`, ajuste em `montar_visao_completa_emissor` e no front (`QuantitativeManifest.titulo` + coluna do manifesto). `MarkdownDocument.titulo` já existe.
 
 ### 8d. `fix-nav-contraste.md` — abas inativas verde-no-verde ✅ CODE-COMPLETE (verificado nesta sessão)
@@ -240,13 +244,14 @@ Ordem cronológica do que foi feito/decidido nesta sessão (2026-06-23 a 06-25):
 
 ### Sessão 2026-06-26/27 (o que rolou)
 1. Dono levantou: ingestão de PDFs lenta/impraticável p/ centenas de emissores. Explorada arquitetura (paralelismo, Batch, RPD) → §8j.
-2. **Estudo de modelos completo** (2.5 Flash vs 3.1 Flash-Lite): harness instrumentado + 3 rodadas (3.1 thinking-off, 3.1 thinking-on+reforço, baseline 2.5). **Veredito: migrar p/ 3.1 Flash-Lite** (paridade de fidelidade com thinking-on+reforço; 15x RPD; ~30% mais barato). Detalhes/pendências em §8j.
+2. **Estudo de modelos completo** (2.5 Flash vs 3.1 Flash-Lite): harness instrumentado + 3 rodadas (3.1 thinking-off, 3.1 thinking-on+reforço, baseline 2.5). Veredito **da época**: migrar p/ 3.1 Flash-Lite. ⚠️ **Revertido depois** (§8j "Decisões travadas": **manter gemini-2.5-flash**). Detalhes em §8j.
 3. Provado que a latência por chunk é **output-bound** (~89% geração) → paralelismo é a alavanca; chunk maior não ajuda.
 4. HANDOVER atualizado (§8j + macro state + este histórico).
 
 ### Primeira ação sugerida na próxima conversa
-1. **(Ingestão §8j)** Rodar o **micro-teste da quant** (3.1, thinking fixo ~3.072 + `max_output_tokens` alto) p/ confirmar fim do truncamento; decidir fallback 2.5 (preview) e mecanismo de concorrência; **escrever o plano do paralelismo** (semáforo global + backoff com jitter) e a migração `GEMINI_MODEL`.
+> ⚠️ **Atualizado 2026-09-21:** os itens 1 e 5 abaixo (ingestão §8j / piloto MarkItDown-Docling §8h) foram **resolvidos** pela §8k (Jina OCR p/ PDF + Docling p/ não-PDF, com a quant consumindo o mesmo Markdown; commitado e mergeado em `main`). Próximas ações válidas:
+1. **Teste end-to-end da §8k via API + Supabase**: subir `uvicorn api.main:app`, `POST /cadastro/ticker` e `POST /cadastro/documentos` com 1 DF (PDF) + 1 DOCX; conferir gravação em `demonstracoes_financeiras` + compêndios quali/quant + títulos. (Único pendente real da §8k.)
 2. Entregar ao Codex os planos prontos: **8e**, **8f**, **8g**.
 3. Fechar o **QA visual** do estilo BOCAINA (8a/8d) rodando o app.
-4. `titulos-descritivos-documentos.md` (8c) pendente (lembrar do ALTER TABLE).
-5. Quando a ingestão estiver estável: **piloto MarkItDown/Docling** (8h) e, por último de propósito, **Passo 6** (`servico_analise_credito.py`).
+4. `titulos-descritivos-documentos.md` (8c) pendente (lembrar do ALTER TABLE) — obs.: a geração de título já roda no fluxo §8k.
+5. Por último, de propósito: **Passo 6** (`servico_analise_credito.py`). *(Paralelismo §8j agora só se aplica à estruturação quantitativa via Gemini, se virar gargalo.)*
