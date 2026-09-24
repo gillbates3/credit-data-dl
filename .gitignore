@@ -19,3 +19,7 @@ tmp/*.txt
 data/
 *.json
 !scripts/**/*.json
+
+# Benchmark de parsers (analise concluida; solucao aplicada = Jina OCR + Docling).
+# Mantido apenas localmente; nao versionado. Registro da conclusao no HANDOVER.
+bench/

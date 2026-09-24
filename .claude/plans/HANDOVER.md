@@ -179,7 +179,7 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 - `servico_docling.py` (**novo**): `converter_documento(nome, bytes, status_callback)` via `DocumentConverter().convert(DocumentStream(...))` → `export_to_markdown()`. Singleton lazy. Sem modelos pesados (não recebe PDF).
 - `montar_bloco_markdown` **não** aplica mais a remoção agressiva de linhas de tabela (era da era Gemini, que proibia pipes) — Jina/Docling **produzem** tabelas; só colapsa linhas em branco.
 
-**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
+**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados em benchmark próprio); não-PDF → Docling (local, rápido p/ Office). **Fallbacks:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
 
 **Trilha quantitativa agora consome o MESMO Markdown (Markdown como fonte única):** a conversão documento→Markdown é feita **uma vez** por arquivo e alimenta as **duas** trilhas. A quant **não lê mais o PDF diretamente** — removidos `pdfplumber` e o modo **Gemini Vision** dela. O Gemini na quant passa a **estruturar o Markdown → JSON CVM** (mapear cd_conta/ds_conta/valor, BPA/BPP/DRE/DFC/DVA, períodos). Geração de **título** continua no Gemini.
 
@@ -189,7 +189,7 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 
 **Validação empírica (2026-09-21) — quant OLD (pdfplumber→Gemini) × NEW (Jina→Markdown→Gemini) em 3 DFs reais (Aguas Alta Floresta, Aguas de Piquete, ESAP):** números-chave **idênticos** nos 3 (Ativo Total, PL 2025/2024). Contagem de contas comparável (AAF 160→164; Piquete 146=146; ESAP 158→146 — ruído normal do Gemini). **O risco de OCR em dígito não se materializou.** Tempo: o OCR do Jina é **compartilhado** com a quali (antes o PDF era processado 2×), então no pipeline unificado a quant não adiciona custo de conversão.
 
-**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados no bench); não-PDF → Docling (local, rápido p/ Office). **Fallbacks quali:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
+**Motor por tipo:** PDF → Jina (sempre OCR, ~3–4 s/pág na infra da Jina, tabelas HTML, números fiéis validados em benchmark próprio); não-PDF → Docling (local, rápido p/ Office). **Fallbacks quali:** PDF sem Jina → texto bruto pdfplumber → placeholder; não-PDF sem Docling → placeholder.
 
 **Deps:** `docling`, `pypdfium2` no `requirements.txt`.
 
@@ -199,7 +199,7 @@ Motivação do dono: carga inicial de **centenas de emissores** (20-30 PDFs cada
 
 **Pendências:** (a) decidir se *deck/release* **deve** popular `demonstracoes_financeiras` (as 19 linhas de KPI) ou só a trilha qualitativa — ver discussão do gate por conteúdo; (b) **corrigir o bug de escala da CVM** → **plano pronto p/ executar: `.claude/plans/escala-moeda-hibrida.md`** (modelo híbrido: `valor` canônico em reais cheios + `valor_origem`/`escala_origem`; corrige `parse_valor` e passa a respeitar `ESCALA_MOEDA`; mesma regra na trilha do documento); (c) avaliar paralelismo de páginas no Jina se latência incomodar; (d) o estudo de paralelismo do Gemini (§8j) agora só vale p/ a estruturação quant.
 
-Base empírica da escolha: `bench/` (head-to-head Docling × Marker × ~10 engines de OCR na nuvem — DeepSeek-OCR-2, Chandra, jina-ocr-v1, etc.). jina-ocr-v1 ficou como melhor custo×velocidade×fidelidade p/ tabelas.
+**Base empírica da escolha (registro; artefatos do benchmark não versionados):** foi feito um benchmark próprio de parsers de documento — head-to-head **Docling × Marker** (locais) e ~10 engines de **OCR na nuvem** (DeepSeek-OCR-2, Chandra, **jina-ocr-v1**, GLM/Ling/Qwen/Gemma vision, etc.), sobre DFs digitais, escaneados e decks. Marker venceu em qualidade local mas exige VLM/GPU (caro em CPU); entre as APIs, **jina-ocr-v1** ficou como melhor custo×velocidade×fidelidade p/ tabelas. Somado à decisão de **externalizar o processamento pesado** (arquivos públicos/baixo valor, sem GPU local), isso levou à solução **hoje aplicada**: **PDF → Jina OCR, não-PDF → Docling**.
 
 > Planos legados (já entregues): `servico_repositorio.md`, `orquestrador.md`, `correcao-orquestrador-jobs.md`, `api-fastapi.md`, `front-nextjs.md`. Planos já implementados: `markdown-todos-pdfs.md` (8b), `front-estilo-bocaina.md` (8a), `fix-nav-contraste.md` (8d).
 

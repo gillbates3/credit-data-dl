@@ -1,9 +1,0 @@
-# PDFs de teste baixados (terceiros, grandes) — não versionar
-pdfs/
-# saídas ad-hoc de execuções locais
-out/
-out_real/
-# ambiente e cache
-.venv/
-__pycache__/
-*.pyc
